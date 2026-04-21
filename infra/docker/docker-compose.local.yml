@@ -60,6 +60,24 @@ services:
       timeout: 5s
       retries: 5
 
+  graphhopper:
+    image: graphhopper/graphhopper:9.1
+    restart: unless-stopped
+    volumes:
+      - ./graphhopper/config.yml:/graphhopper/config.yml:ro
+      - ./graphhopper/custom_models:/graphhopper/custom_models:ro
+      - ./graphhopper/osm:/graphhopper/osm:ro
+      - via-graphhopper-data:/graphhopper/graph-cache
+    ports:
+      - "${GH_PORT:-8989}:8989"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+
 volumes:
   via-postgres-data:
   via-minio-data:
+  via-graphhopper-data:

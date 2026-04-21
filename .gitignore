@@ -44,5 +44,8 @@ yarn-error.log*
 # vercel
 .vercel
 
+# OSM extracts — large binary files, downloaded via scripts/download-finland-osm.sh
+infra/docker/graphhopper/osm/*.pbf
+
 # via wiki (Obsidian vault — not part of the app)
 via-wiki/
