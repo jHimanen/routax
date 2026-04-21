@@ -1,0 +1,21 @@
+{
+  "name": "@via/api",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "lint": "biome check ./src",
+    "dev": "node --watch dist/index.js",
+    "start": "node dist/index.js",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@via/shared": "workspace:*",
+    "fastify": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
