@@ -1,39 +1,48 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
+**/node_modules/
 /.pnp
 .pnp.js
+.pnpm-store/
+.pnpm-debug.log
+
+# build output
+**/dist/
+**/.next/
+**/out/
+**/build/
+
+# TypeScript
+**/*.tsbuildinfo
 
 # testing
-/coverage
+**/coverage/
 
-# next.js
-/.next/
-/out/
+# env files
+.env
+.env.local
+.env.*.local
 
-# production
-/build
-
-# misc
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
+# editor
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
-.env
+# pem/cert files
+*.pem
 
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# misc
+# via wiki (Obsidian vault — not part of the app)
 via-wiki/

@@ -1,0 +1,24 @@
+{
+  "name": "@via/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ./src",
+    "dev": "next dev",
+    "start": "next start",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@via/shared": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}
