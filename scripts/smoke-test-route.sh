@@ -87,11 +87,18 @@ echo "GraphHopper smoke test"
 echo "URL: ${BASE_URL}"
 echo "Route: Helsinki Central → Hakaniemi Market Hall"
 
-# Check GraphHopper is reachable
-if ! curl -sf "${BASE_URL}/health" > /dev/null; then
+# Check GraphHopper is reachable (/info is the correct readiness endpoint;
+# /health lives on the Dropwizard admin port 8990, not the routing port 8989)
+if ! curl -sf "${BASE_URL}/info" > /dev/null; then
   echo ""
   echo "ERROR: GraphHopper not reachable at ${BASE_URL}"
-  echo "Run 'make up' and wait for the healthcheck to pass, then retry."
+  echo ""
+  echo "If you haven't downloaded the OSM extract yet, run:"
+  echo "  make download-osm   # ~450 MB, one-time"
+  echo "  make up             # restarts GH so it can find the PBF"
+  echo ""
+  echo "If GH is still starting up after a fresh graph build, wait a few"
+  echo "minutes and retry (first boot imports Finland, which takes ~5 min)."
   exit 1
 fi
 
