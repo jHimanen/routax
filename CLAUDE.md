@@ -49,11 +49,11 @@ Goal: a route planner running entirely on Docker on the laptop. Plan a cycling r
 
 ### Phase 1 deliverables
 - Monorepo structure: `apps/web`, `apps/api`, `packages/shared`, `infra/docker`
-- `docker-compose.local.yml`: Postgres+PostGIS, Redis, GraphHopper (Finland extract), MinIO, MailHog, Caddy
+- `docker-compose.local.yml`: Postgres+PostGIS, GraphHopper (Finland extract), MinIO, MailHog, Caddy (Redis deliberately deferred — see `via-wiki/product/decisions/postgres-first-defer-redis.md`)
 - Next.js + MapLibre GL frontend with local tile source (MapTiler dev key)
 - Fastify API with `/route` endpoint proxying to GraphHopper
 - One custom GraphHopper profile with three parameters: `avoid_traffic`, `prefer_quiet_surfaces`, `max_gradient`
-- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider` — all backed by local stubs
+- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider`, `RoutingProvider`, `QueueProvider`, `CacheProvider` — all backed by local stubs (queue and cache on Postgres via `FOR UPDATE SKIP LOCKED` and keyed TTL)
 
 ### Phase 1 "done" signal
 Open `localhost:3000`, click two points on a Finland map, see a cycling route, adjust sliders that meaningfully change the route.
@@ -137,7 +137,7 @@ Full rationale in `via-wiki/product/decisions/`.
 | Frontend | Next.js (App Router), MapLibre GL JS, TypeScript |
 | API | Fastify, TypeScript |
 | Database | Postgres 16 + PostGIS |
-| Cache | Redis |
+| Queue / cache | Postgres (Phase 1–3) → Redis only if measured pressure justifies it |
 | Routing | GraphHopper (self-hosted, Java) |
 | Object storage | MinIO (local) → S3/Cloudflare R2 (prod) |
 | Email | MailHog (local) → Postmark (Phase 5) |
