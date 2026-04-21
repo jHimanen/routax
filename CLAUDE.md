@@ -90,6 +90,10 @@ Full rationale in `via-wiki/product/decisions/`.
 
 # Repo working rules
 
+## Critical rules
+- Never commit or push directly to main
+- Always create a branch and open a PR
+
 ## Product and engineering intent
 - Optimize for correctness, clarity, and shipping speed.
 - Prefer the simplest implementation that solves the actual problem.

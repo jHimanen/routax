@@ -30,7 +30,6 @@ project-via/
 │   └── shared/       Shared types (browser + Node compatible)
 ├── infra/
 │   └── docker/       Docker Compose files (Task 02+)
-└── via-wiki/         Obsidian knowledge wiki — do not edit directly
 ```
 
 ---
@@ -60,9 +59,6 @@ make up     # docker compose up
 make down   # docker compose down
 ```
 
----
+## Repo working rules
 
-## Knowledge base
-
-All product decisions, architecture rationale, and the 7-phase build plan live in
-[`via-wiki/`](./via-wiki/). Start with [`via-wiki/overview.md`](./via-wiki/overview.md).
+Follow the repo working rules in `CLAUDE.md`.
