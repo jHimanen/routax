@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEST="infra/docker/graphhopper/osm/finland-latest.osm.pbf"
+DEST="infra/docker/graphhopper/data/finland-latest.osm.pbf"
 URL="https://download.geofabrik.de/europe/finland-latest.osm.pbf"
 
 if [ -f "$DEST" ]; then

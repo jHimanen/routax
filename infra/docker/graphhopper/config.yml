@@ -1,6 +1,6 @@
 graphhopper:
-  datareader.file: /graphhopper/osm/finland-latest.osm.pbf
-  graph.location: /graphhopper/graph-cache
+  datareader.file: /data/finland-latest.osm.pbf
+  graph.location: /data/graph-cache
 
   profiles:
     - name: bike_custom

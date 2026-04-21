@@ -15,8 +15,8 @@ make up
 
 The first boot imports the OSM data and builds the routing graph. This
 takes **3–8 minutes** for Finland. Subsequent boots skip the import and
-start in a few seconds (the graph is cached in the `via-graphhopper-data`
-Docker volume).
+start in a few seconds (the graph is cached in
+`infra/docker/graphhopper/data/graph-cache/`).
 
 Watch the import progress:
 
@@ -90,20 +90,20 @@ The rule is omitted from `v0-cycling.json` to avoid silent no-ops.
 
 To route a different region (e.g. Sweden):
 
-1. Download the new PBF into `infra/docker/graphhopper/osm/`:
+1. Download the new PBF into `infra/docker/graphhopper/data/`:
    ```bash
-   curl -L -o infra/docker/graphhopper/osm/sweden-latest.osm.pbf \
+   curl -L -o infra/docker/graphhopper/data/sweden-latest.osm.pbf \
      https://download.geofabrik.de/europe/sweden-latest.osm.pbf
    ```
 
 2. Update `datareader.file` in `config.yml`:
    ```yaml
-   datareader.file: /graphhopper/osm/sweden-latest.osm.pbf
+   datareader.file: /data/sweden-latest.osm.pbf
    ```
 
 3. Invalidate the graph cache and rebuild:
    ```bash
-   docker volume rm project-via_via-graphhopper-data
+   rm -rf infra/docker/graphhopper/data/graph-cache
    make up
    ```
 
@@ -112,7 +112,7 @@ To route a different region (e.g. Sweden):
 The cache must be cleared whenever the config or OSM extract changes:
 
 ```bash
-docker volume rm project-via_via-graphhopper-data
+rm -rf infra/docker/graphhopper/data/graph-cache
 make up
 ```
 
