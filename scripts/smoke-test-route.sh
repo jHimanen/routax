@@ -36,7 +36,7 @@ run_request() {
   body=$(cat <<JSON
 {
   "points": [${POINT_A}, ${POINT_B}],
-  "profile": "bike_custom",
+  "profile": "bike",
   "custom_model": {
     "priority": [
       {"if": "road_class == PRIMARY",   "multiply_by": "${primary_mult}"},

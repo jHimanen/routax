@@ -2,10 +2,10 @@ graphhopper:
   datareader.file: /data/finland-latest.osm.pbf
   graph.location: /data/graph-cache
 
+  import.osm.ignored_highways: motorway,trunk
+
   profiles:
-    - name: bike_custom
-      vehicle: bike
-      weighting: custom
+    - name: bike
       custom_model_files: [bike-base.json]
 
   custom_model_folder: /graphhopper/custom_models
