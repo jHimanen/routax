@@ -53,7 +53,7 @@ Goal: a route planner running entirely on Docker on the laptop. Plan a cycling r
 - Next.js + MapLibre GL frontend with local tile source (MapTiler dev key)
 - Fastify API with `/route` endpoint proxying to GraphHopper
 - One custom GraphHopper profile with three parameters: `avoid_traffic`, `prefer_quiet_surfaces`, `max_gradient`
-- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider`, `RoutingProvider`, `QueueProvider`, `CacheProvider` — all backed by local stubs (queue and cache on Postgres via `FOR UPDATE SKIP LOCKED` and keyed TTL)
+- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider`, `RoutingProvider`, `QueueProvider`, `CacheProvider` — all backed by local implementations. Auth and payments are true stubs; the rest speak real protocols locally (SMTP → MailHog, S3 → MinIO, HTTP → GraphHopper; queue/cache on Postgres via `FOR UPDATE SKIP LOCKED` and keyed TTL; analytics to a Postgres `analytics_events` table that stays the system of record through Phase 5 — see `via-wiki/product/decisions/defer-posthog-for-postgres-analytics.md`)
 
 ### Phase 1 "done" signal
 Open `localhost:3000`, click two points on a Finland map, see a cycling route, adjust sliders that meaningfully change the route.
