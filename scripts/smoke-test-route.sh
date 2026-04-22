@@ -36,11 +36,12 @@ run_request() {
 {
   "points": [${POINT_A}, ${POINT_B}],
   "profile": "bike",
+  "points_encoded": false,
   "custom_model": {
     "priority": [
       {"if": "road_class == PRIMARY",   "multiply_by": "${primary_mult}"},
       {"else_if": "road_class == SECONDARY", "multiply_by": "${secondary_mult}"},
-      {"if": "road_environment == CYCLEWAY || road_class == TRACK || road_environment == LIVING_STREET", "multiply_by": "${quiet_mult}"}
+      {"if": "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH", "multiply_by": "${quiet_mult}"}
     ],
     "distance_influence": 70
   }

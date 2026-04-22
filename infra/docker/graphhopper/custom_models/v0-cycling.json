@@ -9,7 +9,7 @@
       "multiply_by": "0.75"
     },
     {
-      "if": "road_environment == CYCLEWAY || road_class == TRACK || road_environment == LIVING_STREET",
+      "if": "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
       "multiply_by": "1.4"
     }
   ],
