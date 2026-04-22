@@ -11,10 +11,6 @@
     {
       "if": "road_environment == CYCLEWAY || road_class == TRACK || road_environment == LIVING_STREET",
       "multiply_by": "1.4"
-    },
-    {
-      "else_if": "surface == GRAVEL || surface == DIRT || surface == SAND",
-      "multiply_by": "0.8"
     }
   ],
   "distance_influence": 70

@@ -76,7 +76,7 @@ GraphHopper priority multipliers:
 | Parameter | Range | Effect |
 |---|---|---|
 | `avoid_traffic` | 0–1 | PRIMARY: `1 - t*0.9`; SECONDARY: `1 - t*0.5` |
-| `prefer_quiet_surfaces` | 0–1 | Cycleways/tracks/living streets: `1 + q*0.8`; gravel/dirt/sand: `1 - q*0.4` |
+| `prefer_quiet_surfaces` | 0–1 | Cycleways/tracks/living streets: `1 + q*0.8` |
 | `max_gradient` | 0–15% | **Not active in Phase 1** — see note below |
 
 ### max_gradient limitation

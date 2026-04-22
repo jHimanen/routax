@@ -4,6 +4,7 @@
 # avoid_traffic values and asserts both return a valid LineString.
 # Prints distances so you can confirm the routes differ.
 set -euo pipefail
+export LC_NUMERIC=C
 
 GH_PORT="${GH_PORT:-8989}"
 BASE_URL="http://localhost:${GH_PORT}"
@@ -29,8 +30,6 @@ run_request() {
   secondary_mult=$(echo "scale=2; 1 - $avoid_traffic * 0.5" | bc)
   local quiet_mult
   quiet_mult=$(echo "scale=2; 1 + $prefer_quiet * 0.8" | bc)
-  local gravel_mult
-  gravel_mult=$(echo "scale=2; 1 - $prefer_quiet * 0.4" | bc)
 
   local body
   body=$(cat <<JSON
@@ -41,8 +40,7 @@ run_request() {
     "priority": [
       {"if": "road_class == PRIMARY",   "multiply_by": "${primary_mult}"},
       {"else_if": "road_class == SECONDARY", "multiply_by": "${secondary_mult}"},
-      {"if": "road_environment == CYCLEWAY || road_class == TRACK || road_environment == LIVING_STREET", "multiply_by": "${quiet_mult}"},
-      {"else_if": "surface == GRAVEL || surface == DIRT || surface == SAND", "multiply_by": "${gravel_mult}"}
+      {"if": "road_environment == CYCLEWAY || road_class == TRACK || road_environment == LIVING_STREET", "multiply_by": "${quiet_mult}"}
     ],
     "distance_influence": 70
   }
