@@ -44,5 +44,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# GraphHopper data dir — OSM PBF and graph cache; populated via make download-osm
+infra/docker/graphhopper/data/*
+!infra/docker/graphhopper/data/.gitkeep
+
 # via wiki (Obsidian vault — not part of the app)
 via-wiki/

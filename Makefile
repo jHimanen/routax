@@ -1,6 +1,6 @@
 COMPOSE_FILE := infra/docker/docker-compose.local.yml
 
-.PHONY: up down logs reset dev
+.PHONY: up down logs reset dev download-osm smoke-test
 
 up:
 	docker compose -f $(COMPOSE_FILE) up -d
@@ -16,3 +16,9 @@ reset:
 
 dev:
 	@echo "not yet implemented"
+
+download-osm:
+	bash scripts/download-finland-osm.sh
+
+smoke-test:
+	bash scripts/smoke-test-route.sh

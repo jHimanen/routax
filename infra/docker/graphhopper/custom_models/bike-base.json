@@ -1,0 +1,9 @@
+{
+  "speed": [
+    {
+      "if": "true",
+      "limit_to": "30"
+    }
+  ],
+  "distance_influence": 70
+}

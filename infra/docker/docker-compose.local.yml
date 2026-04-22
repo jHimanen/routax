@@ -60,6 +60,25 @@ services:
       timeout: 5s
       retries: 5
 
+  graphhopper:
+    image: israelhikingmap/graphhopper:latest
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "${GH_JAVA_OPTS:--Xmx2g -Xms256m}"
+    command: --host 0.0.0.0
+    volumes:
+      - ./graphhopper/config.yml:/graphhopper/config-example.yml:ro
+      - ./graphhopper/custom_models:/graphhopper/custom_models:ro
+      - ./graphhopper/data:/data
+    ports:
+      - "${GH_PORT:-8989}:8989"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/info"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+
 volumes:
   via-postgres-data:
   via-minio-data:
