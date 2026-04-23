@@ -1,9 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Pool } from "pg";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function runMigrations(pool: Pool): Promise<void> {
   const client = await pool.connect();
@@ -33,10 +30,7 @@ export async function runMigrations(pool: Pool): Promise<void> {
       await client.query("BEGIN");
       try {
         await client.query(sql);
-        await client.query(
-          "INSERT INTO migrations.applied (filename) VALUES ($1)",
-          [file],
-        );
+        await client.query("INSERT INTO migrations.applied (filename) VALUES ($1)", [file]);
         await client.query("COMMIT");
       } catch (err) {
         await client.query("ROLLBACK");
