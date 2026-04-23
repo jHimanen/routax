@@ -1,5 +1,8 @@
+import { config } from "dotenv";
 import { Pool } from "pg";
 import { runMigrations } from "./src/migrations/runner.js";
+
+config({ path: ".env.test", override: false });
 
 export async function setup(): Promise<void> {
   const pool = new Pool({

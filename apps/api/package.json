@@ -24,6 +24,7 @@
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^6.0.0",
     "@types/pg": "^8.0.0",
+    "dotenv": "^16.0.0",
     "vitest": "^3.0.0"
   }
 }
