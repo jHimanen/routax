@@ -1,30 +1,56 @@
 "use client";
 
 import maplibregl from "maplibre-gl";
-import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type { LatLng, RouteResult } from "@via/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
 const FINLAND_ZOOM = 4.8;
 
 function getStyleUrl(): string | null {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-  if (!key) {
-    return null;
-  }
-
+  if (!key) return null;
   return `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
 }
 
-export function ViaMap(): React.JSX.Element {
+// ── ViaMap ──────────────────────────────────────────────────────────────────
+
+interface ViaMapProps {
+  start: LatLng | null;
+  end: LatLng | null;
+  routeGeoJSON: RouteResult["geometry"] | null;
+  onMapClick: (lngLat: LatLng) => void;
+  onMapLoaded: () => void;
+  mapLoaded: boolean;
+}
+
+function ViaMap({
+  start,
+  end,
+  routeGeoJSON,
+  onMapClick,
+  onMapLoaded,
+  mapLoaded,
+}: ViaMapProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const styleUrl = getStyleUrl();
 
+  // Keep callbacks fresh in the long-lived map event handlers.
+  const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
-    if (!containerRef.current || mapRef.current || !styleUrl) {
-      return;
-    }
+    onMapClickRef.current = onMapClick;
+  });
+
+  const onMapLoadedRef = useRef(onMapLoaded);
+  useEffect(() => {
+    onMapLoadedRef.current = onMapLoaded;
+  });
+
+  // Map lifecycle
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current || !styleUrl) return;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -36,6 +62,15 @@ export function ViaMap(): React.JSX.Element {
 
     map.addControl(new maplibregl.AttributionControl({ compact: false }));
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    map.on("load", () => {
+      onMapLoadedRef.current();
+    });
+
+    map.on("click", (e) => {
+      onMapClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+    });
+
     mapRef.current = map;
 
     return () => {
@@ -43,6 +78,92 @@ export function ViaMap(): React.JSX.Element {
       mapRef.current = null;
     };
   }, [styleUrl]);
+
+  // Cursor feedback
+  useEffect(() => {
+    const canvas = mapRef.current?.getCanvas();
+    if (!canvas) return;
+    canvas.style.cursor = start === null || end === null ? "crosshair" : "grab";
+  }, [start, end]);
+
+  // Markers
+  const startMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const endMarkerRef = useRef<maplibregl.Marker | null>(null);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (!startMarkerRef.current) {
+      startMarkerRef.current = new maplibregl.Marker({ color: "#22c55e" });
+    }
+    if (!endMarkerRef.current) {
+      endMarkerRef.current = new maplibregl.Marker({ color: "#ef4444" });
+    }
+
+    if (start) {
+      startMarkerRef.current.setLngLat([start.lng, start.lat]).addTo(map);
+    } else {
+      startMarkerRef.current.remove();
+    }
+
+    if (end) {
+      endMarkerRef.current.setLngLat([end.lng, end.lat]).addTo(map);
+    } else {
+      endMarkerRef.current.remove();
+    }
+  }, [start, end, mapLoaded]);
+
+  // Route layer
+  const SOURCE_ID = "via-route";
+  const LAYER_ID = "via-route-line";
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (routeGeoJSON) {
+      const coords = routeGeoJSON.coordinates;
+      const lngs = coords.map(([lng]) => lng);
+      const lats = coords.map(([, lat]) => lat);
+      const bounds: [maplibregl.LngLatLike, maplibregl.LngLatLike] = [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ];
+
+      const geoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
+        type: "Feature",
+        properties: {},
+        geometry: routeGeoJSON,
+      };
+
+      const existing = map.getSource(SOURCE_ID);
+      if (existing) {
+        (existing as maplibregl.GeoJSONSource).setData(geoJSON);
+      } else {
+        map.addSource(SOURCE_ID, { type: "geojson", data: geoJSON });
+        map.addLayer({
+          id: LAYER_ID,
+          type: "line",
+          source: SOURCE_ID,
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#3b82f6",
+            "line-width": 4,
+            "line-opacity": 0.85,
+          },
+        });
+      }
+
+      map.fitBounds(bounds, {
+        padding: { top: 60, bottom: 60, left: 290, right: 60 },
+        animate: true,
+      });
+    } else {
+      if (map.hasLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
+      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+    }
+  }, [routeGeoJSON, mapLoaded]);
 
   if (!styleUrl) {
     return (
@@ -58,5 +179,55 @@ export function ViaMap(): React.JSX.Element {
     <section className="map-root" aria-label="Finland map">
       <div ref={containerRef} className="map-container" />
     </section>
+  );
+}
+
+// ── RouteMap ─────────────────────────────────────────────────────────────────
+
+export function RouteMap(): React.JSX.Element {
+  const [start, setStart] = useState<LatLng | null>(null);
+  const [end, setEnd] = useState<LatLng | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  const handleReset = useCallback(() => {
+    setStart(null);
+    setEnd(null);
+  }, []);
+
+  const handleMapClick = useCallback(
+    (lngLat: LatLng) => {
+      if (!start) {
+        setStart(lngLat);
+      } else if (!end) {
+        setEnd(lngLat);
+      } else {
+        // Slide forward: old end becomes new start, new click is new end.
+        setStart(end);
+        setEnd(lngLat);
+      }
+    },
+    [start, end],
+  );
+
+  // Escape clears waypoints
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleReset();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleReset]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <ViaMap
+        start={start}
+        end={end}
+        routeGeoJSON={null}
+        onMapClick={handleMapClick}
+        onMapLoaded={() => setMapLoaded(true)}
+        mapLoaded={mapLoaded}
+      />
+    </div>
   );
 }
