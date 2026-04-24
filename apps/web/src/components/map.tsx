@@ -162,7 +162,7 @@ function ViaMap({
         animate: true,
       });
     } else {
-      if (map.hasLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
+      if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     }
   }, [routeGeoJSON, mapLoaded]);
