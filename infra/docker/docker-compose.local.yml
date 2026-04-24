@@ -122,7 +122,7 @@ services:
       MAILHOG_HOST: mailhog
       MAILHOG_SMTP_PORT: 1025
       API_PORT: 3001
-      CORS_ORIGIN: http://localhost:3000
+      CORS_ORIGIN: https://localhost
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
@@ -137,6 +137,30 @@ services:
       retries: 5
       start_period: 30s
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://localhost/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   via-postgres-data:
   via-minio-data:
+  caddy-data:
+  caddy-config:
