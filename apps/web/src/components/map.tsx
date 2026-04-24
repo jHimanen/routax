@@ -2,8 +2,10 @@
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { LatLng, RouteResult } from "@via/shared";
+import type { LatLng, RouteResult, RoutingProfile } from "@via/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRoute } from "../hooks/useRoute";
+import { RoutePanel } from "./RoutePanel";
 
 const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
 const FINLAND_ZOOM = 4.8;
@@ -184,10 +186,19 @@ function ViaMap({
 
 // ── RouteMap ─────────────────────────────────────────────────────────────────
 
+const DEFAULT_PROFILE: RoutingProfile = {
+  avoidTraffic: 0,
+  preferQuietSurfaces: 0,
+  maxGradient: 20,
+};
+
 export function RouteMap(): React.JSX.Element {
   const [start, setStart] = useState<LatLng | null>(null);
   const [end, setEnd] = useState<LatLng | null>(null);
+  const [profile, setProfile] = useState<RoutingProfile>(DEFAULT_PROFILE);
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  const { result, isLoading, error } = useRoute(start, end, profile);
 
   const handleReset = useCallback(() => {
     setStart(null);
@@ -223,10 +234,20 @@ export function RouteMap(): React.JSX.Element {
       <ViaMap
         start={start}
         end={end}
-        routeGeoJSON={null}
+        routeGeoJSON={result?.geometry ?? null}
         onMapClick={handleMapClick}
         onMapLoaded={() => setMapLoaded(true)}
         mapLoaded={mapLoaded}
+      />
+      <RoutePanel
+        start={start !== null}
+        end={end !== null}
+        profile={profile}
+        onProfileChange={setProfile}
+        result={result}
+        isLoading={isLoading}
+        error={error}
+        onReset={handleReset}
       />
     </div>
   );
