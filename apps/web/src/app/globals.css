@@ -52,3 +52,93 @@ body {
   padding: 20px;
   text-align: center;
 }
+
+/* ── Route panel ─────────────────────────────────────────────────────────── */
+
+.route-panel {
+  position: absolute;
+  bottom: 24px;
+  left: 12px;
+  z-index: 10;
+  width: 260px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 22%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 360px) {
+  .route-panel {
+    width: calc(100vw - 24px);
+  }
+}
+
+.route-panel-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.route-panel-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: default;
+}
+
+.route-panel-label input[type="range"] {
+  width: 100%;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.route-panel-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.route-panel-result {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.route-panel-status {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.route-panel-error {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fef2f2;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.route-panel-reset {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.route-panel-reset:hover {
+  background: #e5e7eb;
+}
