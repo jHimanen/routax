@@ -21,6 +21,7 @@
 .env
 .env.local
 .env.*.local
+**/.env.test
 
 # OS
 .DS_Store
