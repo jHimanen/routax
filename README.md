@@ -8,14 +8,14 @@ per trip via presets, rather than picking from a fixed menu.
 
 ## Stack
 
-| Layer    | Technology                                       |
-|----------|--------------------------------------------------|
-| Frontend | Next.js 15 (App Router), MapLibre GL JS          |
-| API      | Fastify 5, TypeScript                            |
-| Database | Postgres 16 + PostGIS                            |
-| Cache    | Redis                                            |
-| Routing  | GraphHopper (self-hosted)                        |
-| Tooling  | pnpm workspaces, Biome, TypeScript strict mode   |
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15 (App Router), MapLibre GL JS |
+| API | Fastify 5, TypeScript |
+| Database | Postgres 16 + PostGIS |
+| Queue / cache | Postgres (Phase 1–3) -> Redis only if measured pressure justifies it |
+| Routing | GraphHopper (self-hosted) |
+| Tooling | pnpm workspaces, Biome, TypeScript strict mode |
 
 ---
 
@@ -36,7 +36,7 @@ project-via/
 
 ## Getting started
 
-Requires Node 22+ and pnpm 10+. Docker Compose setup is coming in Task 02.
+Requires Node 22+, pnpm 10+, and Docker Desktop.
 
 ```bash
 # Install all workspace dependencies
@@ -51,14 +51,21 @@ pnpm lint
 
 ## Make targets
 
-These are stubs — implemented in later tasks.
+Primary local workflow:
 
 ```bash
-make dev    # start all services locally
-make up     # docker compose up
-make down   # docker compose down
+make up      # start local docker stack
+make down    # stop local docker stack
+make logs    # stream service logs
+make reset   # wipe local volumes and rebuild
 ```
 
 ## Repo working rules
 
 Follow the repo working rules in `CLAUDE.md`.
+
+## Source of truth docs
+
+- Product strategy and phase plan: `via-wiki/product/roadmap.md` (living, authoritative)
+- Architecture and ADRs: `via-wiki/product/decisions/`
+- Context index: `via-wiki/index.md`

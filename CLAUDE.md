@@ -13,7 +13,6 @@ project-via/
 ├── CLAUDE.md              ← you are here
 ├── via-wiki/              ← Obsidian knowledge wiki (wiki operating manual: via-wiki/CLAUDE.md)
 │
-│   (not yet created — Phase 1 targets)
 ├── apps/
 │   ├── web/               Next.js + MapLibre
 │   └── api/               Fastify + TypeScript
@@ -23,7 +22,7 @@ project-via/
     └── docker/            docker-compose files
 ```
 
-The code directories do not exist yet. Phase 1 creates them.
+The monorepo directories exist and are being filled in phase order per the living roadmap.
 
 ---
 
@@ -32,7 +31,8 @@ The code directories do not exist yet. Phase 1 creates them.
 All cycling domain knowledge, product decisions, competitor research, architecture rationale, and the 7-phase build plan live in **`via-wiki/`**. Before touching code, check the wiki for context:
 
 - `via-wiki/overview.md` — living thesis, positioning, target users
-- `via-wiki/raw/via-roadmap.md` — definitive 7-phase build plan (€0 → break-even)
+- `via-wiki/product/roadmap.md` — authoritative living 7-phase build plan (€0 → break-even)
+- `via-wiki/raw/via-roadmap.md` — immutable original source artifact
 - `via-wiki/product/decisions/` — ADR-style routing engine and frontend choices
 - `via-wiki/concepts/engineering/` — adapter pattern, phased build, SaaS stack
 - `via-wiki/index.md` — full content catalogue
@@ -143,7 +143,7 @@ Full rationale in `via-wiki/product/decisions/`.
 | Email | MailHog (local) → Postmark (Phase 5) |
 | Auth | stub (Phase 1–3) → Clerk (Phase 4) |
 | Payments | stub → Stripe + Stripe Tax (Phase 6) |
-| Analytics | stub → PostHog Cloud EU (Phase 5) |
+| Analytics | Postgres `analytics_events` system-of-record (Phase 1+) → PostHog Cloud EU adapter (Phase 6) |
 | Deployment | docker compose (local) → Coolify on Hetzner (Phase 4) |
 
 ---
@@ -153,5 +153,5 @@ Full rationale in `via-wiki/product/decisions/`.
 - Does not edit anything under `via-wiki/raw/` — those are immutable source documents.
 - Does not invent citations or make claims not grounded in wiki sources.
 - Does not skip phases or add features ahead of their phase gate — the ordering is intentional.
-- Does not write the mobile app until web paid conversion is proven (Phase 6 gate).
+- Does not write the mobile app until web paid conversion is proven (Phase 7 gate).
 - Does not roll custom auth — Clerk in Phase 4, stub before that.

@@ -1,6 +1,6 @@
 Report the current build phase status and surface the most actionable next steps.
 
-1. Read `via-wiki/raw/via-roadmap.md` to recall the 7-phase plan.
+1. Read `via-wiki/product/roadmap.md` to recall the current 7-phase plan (authoritative living roadmap). Use `via-wiki/raw/via-roadmap.md` only as historical source context.
 2. Inspect the repo root to determine what exists: look for `apps/`, `packages/`, `infra/`, any `docker-compose*.yml`, `package.json` files, etc.
 3. Read `via-wiki/log.md` (last 20 entries) to see recent activity.
 
