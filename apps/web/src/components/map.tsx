@@ -31,6 +31,7 @@ export function ViaMap(): React.JSX.Element {
       style: styleUrl,
       center: FINLAND_CENTER,
       zoom: FINLAND_ZOOM,
+      attributionControl: false,
     });
 
     map.addControl(new maplibregl.AttributionControl({ compact: false }));
