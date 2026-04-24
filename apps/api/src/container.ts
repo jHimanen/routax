@@ -30,15 +30,17 @@ export interface Container {
   close(): Promise<void>;
 }
 
-export function createContainer(): Container {
-  const pool = new Pool({
+export function createPool(): Pool {
+  return new Pool({
     host: process.env.POSTGRES_HOST ?? "localhost",
     port: Number(process.env.POSTGRES_PORT ?? 5432),
     user: process.env.POSTGRES_USER ?? "via",
     password: process.env.POSTGRES_PASSWORD ?? "via_dev_password",
     database: process.env.POSTGRES_DB ?? "via",
   });
+}
 
+export function createContainer(pool: Pool): Container {
   const cache = new PostgresCacheProvider(pool);
 
   return {

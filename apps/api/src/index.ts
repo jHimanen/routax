@@ -1,35 +1,28 @@
-import Fastify from "fastify";
-import { Pool } from "pg";
+import { buildApp } from "./app.js";
+import { createContainer, createPool } from "./container.js";
 import { runMigrations } from "./migrations/runner.js";
 
-const fastify = Fastify({ logger: true });
-
-fastify.get("/health", async (_request, _reply) => {
-  return { status: "ok" };
-});
-
-// Placeholder — real routing implementation in Task 06
-fastify.get("/route", async (_request, _reply) => {
-  return { status: "not implemented" };
-});
-
 const start = async (): Promise<void> => {
+  const pool = createPool();
+
+  await runMigrations(pool);
+
+  const container = createContainer(pool);
+  const app = buildApp(container);
+
+  const shutdown = async () => {
+    await app.close();
+    await container.close();
+  };
+  process.once("SIGTERM", () => void shutdown());
+  process.once("SIGINT", () => void shutdown());
+
   try {
-    const pool = new Pool({
-      host: process.env.POSTGRES_HOST ?? "localhost",
-      port: Number(process.env.POSTGRES_PORT ?? 5432),
-      user: process.env.POSTGRES_USER ?? "via",
-      password: process.env.POSTGRES_PASSWORD ?? "via_dev_password",
-      database: process.env.POSTGRES_DB ?? "via",
-    });
-
-    await runMigrations(pool);
-    await pool.end();
-
     const port = Number(process.env.API_PORT ?? 3001);
-    await fastify.listen({ port, host: "0.0.0.0" });
+    await app.listen({ port, host: "0.0.0.0" });
   } catch (err) {
-    fastify.log.error(err);
+    app.log.error(err);
+    await container.close();
     process.exit(1);
   }
 };
