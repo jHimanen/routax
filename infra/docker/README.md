@@ -6,6 +6,8 @@ Local data-plane services for Routax development.
 
 | Service | URL | Notes |
 |---|---|---|
+| Routax (canonical) | `https://routax.cc` | requires `/etc/hosts` entry |
+| Routax (fallback) | `https://localhost` | no `/etc/hosts` needed |
 | Postgres 16 + PostGIS | `localhost:5432` | psql / TablePlus |
 | MinIO API | `http://localhost:9000` | S3-compatible endpoint |
 | MinIO Console | `http://localhost:9001` | Browser UI |
