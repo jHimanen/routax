@@ -49,5 +49,6 @@ yarn-error.log*
 infra/docker/graphhopper/data/*
 !infra/docker/graphhopper/data/.gitkeep
 
-# via wiki (Obsidian vault — not part of the app)
-via-wiki/
+# Routax wiki (Obsidian vault — not part of the app)
+routax-wiki/
+.vscode/
