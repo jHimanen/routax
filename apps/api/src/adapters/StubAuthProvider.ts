@@ -1,11 +1,11 @@
-import type { AuthProvider } from "@via/shared";
-import type { UserContext, UserId } from "@via/shared";
+import type { AuthProvider } from "@routax/shared";
+import type { UserContext, UserId } from "@routax/shared";
 
 export class StubAuthProvider implements AuthProvider {
   async getUserContext(_request: unknown): Promise<UserContext | null> {
     return {
       id: (process.env.STUB_AUTH_USER_ID ?? "stub-user-1") as UserId,
-      email: process.env.STUB_AUTH_EMAIL ?? "stub@via.local",
+      email: process.env.STUB_AUTH_EMAIL ?? "stub@routax.local",
     };
   }
 

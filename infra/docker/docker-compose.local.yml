@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     env_file:
       - ../../.env.local
-    command: pnpm --filter @via/web dev --hostname 0.0.0.0 --port 3000
+    command: pnpm --filter @routax/web dev --hostname 0.0.0.0 --port 3000
     volumes:
       - ../..:/app
       - /app/node_modules
@@ -28,16 +28,16 @@ services:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-via}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-via_dev_password}
-      POSTGRES_DB: ${POSTGRES_DB:-via}
+      POSTGRES_USER: ${POSTGRES_USER:-routax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-routax_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-routax}
     volumes:
-      - via-postgres-data:/var/lib/postgresql/data
+      - routax-postgres-data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-via} -d ${POSTGRES_DB:-via}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-routax} -d ${POSTGRES_DB:-routax}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -47,10 +47,10 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-via_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-via_minio_secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-routax_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-routax_minio_secret}
     volumes:
-      - via-minio-data:/data
+      - routax-minio-data:/data
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -66,8 +66,8 @@ services:
       minio:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-via_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-via_minio_secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-routax_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-routax_minio_secret}
     volumes:
       - ./minio/bootstrap.sh:/bootstrap.sh:ro
     entrypoint: ["/bin/sh", "/bootstrap.sh"]
@@ -112,13 +112,13 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:-via}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-via_dev_password}
-      POSTGRES_DB: ${POSTGRES_DB:-via}
+      POSTGRES_USER: ${POSTGRES_USER:-routax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-routax_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-routax}
       GRAPHHOPPER_URL: http://graphhopper:8989
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-via_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-via_minio_secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-routax_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-routax_minio_secret}
       MAILHOG_HOST: mailhog
       MAILHOG_SMTP_PORT: 1025
       API_PORT: 3001
@@ -160,7 +160,7 @@ services:
       start_period: 15s
 
 volumes:
-  via-postgres-data:
-  via-minio-data:
+  routax-postgres-data:
+  routax-minio-data:
   caddy-data:
   caddy-config:

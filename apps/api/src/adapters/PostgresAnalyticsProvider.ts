@@ -1,4 +1,4 @@
-import type { AnalyticsEvent, AnalyticsProvider, UserId } from "@via/shared";
+import type { AnalyticsEvent, AnalyticsProvider, UserId } from "@routax/shared";
 import type { Pool } from "pg";
 
 export class PostgresAnalyticsProvider implements AnalyticsProvider {

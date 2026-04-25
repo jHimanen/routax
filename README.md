@@ -1,6 +1,6 @@
-# Via — Cycling Route Planner
+# Routax — Cycling Route Planner
 
-Via is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring).
+Routax is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring).
 The core differentiator: **cyclist-controlled routing profiles** — riders tune the routing algorithm
 per trip via presets, rather than picking from a fixed menu.
 

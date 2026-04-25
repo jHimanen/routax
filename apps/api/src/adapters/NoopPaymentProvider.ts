@@ -1,4 +1,4 @@
-import type { PaymentProvider, SubscriptionStatus, UserId } from "@via/shared";
+import type { PaymentProvider, SubscriptionStatus, UserId } from "@routax/shared";
 
 export class NoopPaymentProvider implements PaymentProvider {
   async getSubscriptionStatus(_userId: UserId): Promise<SubscriptionStatus> {

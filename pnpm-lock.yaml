@@ -29,7 +29,7 @@ importers:
       '@fastify/cors':
         specifier: ^10.0.0
         version: 10.1.0
-      '@via/shared':
+      '@routax/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       fastify:
@@ -66,7 +66,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@via/shared':
+      '@routax/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       maplibre-gl:

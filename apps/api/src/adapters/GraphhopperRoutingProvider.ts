@@ -1,4 +1,4 @@
-import type { RouteRequest, RouteResult, RoutingProvider } from "@via/shared";
+import type { RouteRequest, RouteResult, RoutingProvider } from "@routax/shared";
 
 interface GhResponse {
   paths: Array<{

@@ -1,4 +1,4 @@
-import type { UserContext } from "@via/shared";
+import type { UserContext } from "@routax/shared";
 
 declare module "fastify" {
   interface FastifyRequest {

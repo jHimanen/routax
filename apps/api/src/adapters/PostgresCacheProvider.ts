@@ -1,4 +1,4 @@
-import type { CacheProvider } from "@via/shared";
+import type { CacheProvider } from "@routax/shared";
 import type { Pool } from "pg";
 
 export class PostgresCacheProvider implements CacheProvider {

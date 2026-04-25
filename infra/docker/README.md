@@ -1,6 +1,6 @@
 # infra/docker
 
-Local data-plane services for Via development.
+Local data-plane services for Routax development.
 
 ## Services
 
@@ -18,11 +18,11 @@ Copy `.env.example` to `.env.local` at the repo root. Defaults:
 
 | Var | Default |
 |---|---|
-| `POSTGRES_USER` | `via` |
-| `POSTGRES_PASSWORD` | `via_dev_password` |
-| `POSTGRES_DB` | `via` |
-| `MINIO_ROOT_USER` | `via_minio` |
-| `MINIO_ROOT_PASSWORD` | `via_minio_secret` |
+| `POSTGRES_USER` | `routax` |
+| `POSTGRES_PASSWORD` | `routax_dev_password` |
+| `POSTGRES_DB` | `routax` |
+| `MINIO_ROOT_USER` | `routax_minio` |
+| `MINIO_ROOT_PASSWORD` | `routax_minio_secret` |
 
 ## Commands
 
@@ -38,4 +38,4 @@ make reset   # stop services and DELETE all volumes (fresh start)
 - Postgres and MinIO data persists across `make down` / `make up` cycles.
 - `make reset` wipes all named volumes — use when you need a clean slate.
 - MailHog has no persistent volume; mail is ephemeral.
-- The `minio-bootstrap` container runs once on first `make up` to create the `via-local` bucket, then exits.
+- The `minio-bootstrap` container runs once on first `make up` to create the `routax-local` bucket, then exits.

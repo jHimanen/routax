@@ -1,6 +1,6 @@
 "use client";
 
-import type { RouteResult, RoutingProfile } from "@via/shared";
+import type { RouteResult, RoutingProfile } from "@routax/shared";
 
 interface RoutePanelProps {
   start: boolean;

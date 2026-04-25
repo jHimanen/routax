@@ -9,11 +9,11 @@ describe("MailHogEmailProvider", () => {
   });
 
   it("delivers an email to MailHog", async () => {
-    const subject = `via-test-${Date.now()}`;
+    const subject = `routax-test-${Date.now()}`;
 
     await provider.send({
-      from: "sender@via.local",
-      to: "recipient@via.local",
+      from: "sender@routax.local",
+      to: "recipient@routax.local",
       subject,
       html: "<p>Integration test</p>",
     });

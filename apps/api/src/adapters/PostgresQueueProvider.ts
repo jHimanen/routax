@@ -1,4 +1,4 @@
-import type { ClaimedJob, QueueJob, QueueProvider } from "@via/shared";
+import type { ClaimedJob, QueueJob, QueueProvider } from "@routax/shared";
 import type { Pool } from "pg";
 
 export class PostgresQueueProvider implements QueueProvider {

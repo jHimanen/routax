@@ -2,7 +2,7 @@
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { LatLng, RouteResult, RoutingProfile } from "@via/shared";
+import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRoute } from "../hooks/useRoute";
 import { RoutePanel } from "./RoutePanel";
@@ -16,9 +16,9 @@ function getStyleUrl(): string | null {
   return `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
 }
 
-// ── ViaMap ──────────────────────────────────────────────────────────────────
+// ── RoutaxMap ────────────────────────────────────────────────────────────────
 
-interface ViaMapProps {
+interface RoutaxMapProps {
   start: LatLng | null;
   end: LatLng | null;
   routeGeoJSON: RouteResult["geometry"] | null;
@@ -27,14 +27,14 @@ interface ViaMapProps {
   mapLoaded: boolean;
 }
 
-function ViaMap({
+function RoutaxMap({
   start,
   end,
   routeGeoJSON,
   onMapClick,
   onMapLoaded,
   mapLoaded,
-}: ViaMapProps): React.JSX.Element {
+}: RoutaxMapProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const styleUrl = getStyleUrl();
@@ -117,8 +117,8 @@ function ViaMap({
   }, [start, end, mapLoaded]);
 
   // Route layer
-  const SOURCE_ID = "via-route";
-  const LAYER_ID = "via-route-line";
+  const SOURCE_ID = "routax-route";
+  const LAYER_ID = "routax-route-line";
 
   useEffect(() => {
     const map = mapRef.current;
@@ -231,7 +231,7 @@ export function RouteMap(): React.JSX.Element {
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <ViaMap
+      <RoutaxMap
         start={start}
         end={end}
         routeGeoJSON={result?.geometry ?? null}

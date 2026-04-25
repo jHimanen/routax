@@ -1,4 +1,4 @@
-import { type RouteRequest, type RouteResult, RouteResultSchema } from "@via/shared";
+import { type RouteRequest, type RouteResult, RouteResultSchema } from "@routax/shared";
 
 const DEFAULT_API_BASE_URL = "/api";
 

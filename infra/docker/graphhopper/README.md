@@ -69,7 +69,7 @@ curl -X POST http://localhost:8989/route \
 
 ## Custom model parameters (v0)
 
-`custom_models/v0-cycling.json` documents the three Via profile parameters.
+`custom_models/v0-cycling.json` documents the three Routax profile parameters.
 The values below show how the Fastify API (Task 06) maps slider values to
 GraphHopper priority multipliers:
 

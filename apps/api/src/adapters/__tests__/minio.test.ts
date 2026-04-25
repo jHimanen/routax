@@ -10,7 +10,7 @@ describe("MinioStorageProvider", () => {
 
   it("round-trips an object through MinIO", async () => {
     const key = `test/${Date.now()}.txt`;
-    const content = Buffer.from("via integration test content");
+    const content = Buffer.from("routax integration test content");
 
     const ref = await provider.putObject(key, content, "text/plain");
     expect(ref.key).toBe(key);

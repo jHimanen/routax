@@ -1,4 +1,4 @@
-import type { UserId } from "@via/shared";
+import type { UserId } from "@routax/shared";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PostgresAnalyticsProvider } from "../PostgresAnalyticsProvider.js";
@@ -6,9 +6,9 @@ import { PostgresAnalyticsProvider } from "../PostgresAnalyticsProvider.js";
 const pool = new Pool({
   host: process.env.POSTGRES_HOST ?? "localhost",
   port: Number(process.env.POSTGRES_PORT ?? 5432),
-  user: process.env.POSTGRES_USER ?? "via",
-  password: process.env.POSTGRES_PASSWORD ?? "via_dev_password",
-  database: process.env.POSTGRES_DB ?? "via",
+  user: process.env.POSTGRES_USER ?? "routax",
+  password: process.env.POSTGRES_PASSWORD ?? "routax_dev_password",
+  database: process.env.POSTGRES_DB ?? "routax",
 });
 
 const TEST_USER = "test-analytics-user" as UserId;

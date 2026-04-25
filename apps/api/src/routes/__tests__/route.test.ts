@@ -1,4 +1,4 @@
-import type { RouteResult } from "@via/shared";
+import type { RouteResult } from "@routax/shared";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../app.js";
 import type { Container } from "../../container.js";
@@ -26,11 +26,11 @@ function makeContainer(overrides?: Partial<Container>): Container {
     auth: {
       getUserContext: async () => ({
         id: "test-user" as ReturnType<typeof String> & { readonly __brand: "UserId" },
-        email: "test@via.local",
+        email: "test@routax.local",
       }),
       requireUser: async () => ({
         id: "test-user" as ReturnType<typeof String> & { readonly __brand: "UserId" },
-        email: "test@via.local",
+        email: "test@routax.local",
       }),
     },
     routing: { planRoute: async () => STUB_RESULT },

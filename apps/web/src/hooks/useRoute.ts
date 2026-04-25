@@ -1,4 +1,4 @@
-import type { LatLng, RouteResult, RoutingProfile } from "@via/shared";
+import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
 import { useEffect, useRef, useState } from "react";
 import { postRoute } from "../lib/api";
 

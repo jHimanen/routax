@@ -6,7 +6,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { StorageProvider, StoredObjectRef } from "@via/shared";
+import type { StorageProvider, StoredObjectRef } from "@routax/shared";
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
@@ -21,13 +21,13 @@ export class MinioStorageProvider implements StorageProvider {
   private readonly bucket: string;
 
   constructor() {
-    this.bucket = process.env.MINIO_BUCKET ?? "via-local";
+    this.bucket = process.env.MINIO_BUCKET ?? "routax-local";
     this.client = new S3Client({
       endpoint: process.env.MINIO_ENDPOINT ?? "http://localhost:9000",
       region: "us-east-1",
       credentials: {
-        accessKeyId: process.env.MINIO_ACCESS_KEY ?? "via_minio",
-        secretAccessKey: process.env.MINIO_SECRET_KEY ?? "via_minio_secret",
+        accessKeyId: process.env.MINIO_ACCESS_KEY ?? "routax_minio",
+        secretAccessKey: process.env.MINIO_SECRET_KEY ?? "routax_minio_secret",
       },
       forcePathStyle: true,
     });

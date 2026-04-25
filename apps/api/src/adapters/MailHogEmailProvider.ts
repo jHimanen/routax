@@ -1,4 +1,4 @@
-import type { EmailMessage, EmailProvider } from "@via/shared";
+import type { EmailMessage, EmailProvider } from "@routax/shared";
 import nodemailer from "nodemailer";
 
 export class MailHogEmailProvider implements EmailProvider {

@@ -1,4 +1,4 @@
-import { RouteRequestSchema } from "@via/shared";
+import { RouteRequestSchema } from "@routax/shared";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { Container } from "../container.js";

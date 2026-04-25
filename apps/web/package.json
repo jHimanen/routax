@@ -1,5 +1,5 @@
 {
-  "name": "@via/web",
+  "name": "@routax/web",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "test": "echo \"no tests yet\" && exit 0"
   },
   "dependencies": {
-    "@via/shared": "workspace:*",
+    "@routax/shared": "workspace:*",
     "maplibre-gl": "^5.24.0",
     "next": "^15.0.0",
     "react": "^19.0.0",

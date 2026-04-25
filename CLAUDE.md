@@ -1,6 +1,6 @@
-# Via — Project Root
+# Routax — Project Root
 
-Via is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring). The core differentiator: **cyclist-controlled routing profiles** — riders tune the routing profile themselves per trip via presets, rather than picking from a fixed menu.
+Routax is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring). The core differentiator: **cyclist-controlled routing profiles** — riders tune the routing profile themselves per trip via presets, rather than picking from a fixed menu.
 
 The project capitalises on Komoot's March 2025 acquisition by Bending Spoons and subsequent community collapse (80%+ staff cut, trust broken, no consensus replacement).
 
