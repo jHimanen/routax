@@ -14,7 +14,7 @@ check() {
   local extra_args=("$@")
   local status
   status=$(curl -sk -o /dev/null -w "%{http_code}" \
-    -X "$method" "${BASE}${path}" "${extra_args[@]}")
+    -X "$method" "${BASE}${path}" "${extra_args[@]+"${extra_args[@]}"}")
   if [ "$status" = "$expected_status" ]; then
     echo "PASS [$label] $method $path → $status"
     PASS=$((PASS + 1))
