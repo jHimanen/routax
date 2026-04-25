@@ -54,11 +54,38 @@ pnpm lint
 Primary local workflow:
 
 ```bash
-make up      # start local docker stack
-make down    # stop local docker stack
-make logs    # stream service logs
-make reset   # wipe local volumes and rebuild
+make up          # start local docker stack
+make down        # stop local docker stack
+make logs        # stream service logs
+make reset       # wipe local volumes and rebuild
+make smoke       # end-to-end smoke test through Caddy HTTPS
+make smoke-test  # direct GraphHopper routing test (bypasses Caddy)
 ```
+
+## Local HTTPS entry point
+
+All traffic goes through Caddy at **https://localhost** (port 443).
+
+| URL | Routed to |
+|---|---|
+| `https://localhost` | Next.js frontend |
+| `https://localhost/api/*` | Fastify API |
+
+Caddy uses its built-in internal CA to issue a self-signed certificate.
+Your browser will show a security warning on first visit — click
+**Advanced → Proceed** (Chrome/Edge) or **Accept the Risk and Continue** (Firefox).
+
+To silence the warning permanently on macOS, trust Caddy's root cert:
+
+```bash
+docker compose -f infra/docker/docker-compose.local.yml exec caddy \
+  cat /data/caddy/pki/authorities/local/root.crt \
+  | sudo security add-trusted-cert -d -r trustRoot \
+    -k /Library/Keychains/System.keychain /dev/stdin
+```
+
+Restart your browser after running this. If you run `make reset` (which wipes
+`caddy-data`), Caddy generates a new CA — re-run the command above.
 
 ## Repo working rules
 
