@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
 
 export default withSentryConfig(nextConfig, {
   silent: true,
-  disableLogger: true,
+  webpack: { treeshake: { removeDebugLogging: true } },
   // Source map upload is Phase 4
   sourcemaps: { disable: true },
   org: process.env.SENTRY_ORG,

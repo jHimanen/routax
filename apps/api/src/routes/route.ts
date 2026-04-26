@@ -34,7 +34,6 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         },
         level: "info",
       });
-
       return result;
     });
 }
