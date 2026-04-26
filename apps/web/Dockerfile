@@ -13,6 +13,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 
+ARG SENTRY_RELEASE=dev
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+
 WORKDIR /app/apps/web
 
 CMD ["pnpm", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
