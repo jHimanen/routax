@@ -3,6 +3,7 @@ import type {
   AuthProvider,
   CacheProvider,
   EmailProvider,
+  FeatureFlagProvider,
   PaymentProvider,
   QueueProvider,
   RoutingProvider,
@@ -15,6 +16,7 @@ import { MinioStorageProvider } from "./adapters/MinioStorageProvider.js";
 import { NoopPaymentProvider } from "./adapters/NoopPaymentProvider.js";
 import { PostgresAnalyticsProvider } from "./adapters/PostgresAnalyticsProvider.js";
 import { PostgresCacheProvider } from "./adapters/PostgresCacheProvider.js";
+import { PostgresFeatureFlagProvider } from "./adapters/PostgresFeatureFlagProvider.js";
 import { PostgresQueueProvider } from "./adapters/PostgresQueueProvider.js";
 import { StubAuthProvider } from "./adapters/StubAuthProvider.js";
 
@@ -27,6 +29,7 @@ export interface Container {
   routing: RoutingProvider;
   queue: QueueProvider;
   cache: CacheProvider;
+  flags: FeatureFlagProvider;
   close(): Promise<void>;
 }
 
@@ -52,6 +55,7 @@ export function createContainer(pool: Pool): Container {
     routing: new GraphhopperRoutingProvider(),
     queue: new PostgresQueueProvider(pool),
     cache,
+    flags: new PostgresFeatureFlagProvider(pool),
     close: async () => {
       cache.stopSweeper();
       await pool.end();
