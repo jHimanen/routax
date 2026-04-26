@@ -22,7 +22,7 @@ per trip via presets, rather than picking from a fixed menu.
 ## Repo layout
 
 ```
-project-via/
+routax/
 ├── apps/
 │   ├── web/          Next.js frontend
 │   └── api/          Fastify API
@@ -55,6 +55,7 @@ Primary local workflow:
 
 ```bash
 make up          # start local docker stack
+make up-build    # start local docker stack and rebuild services
 make down        # stop local docker stack
 make logs        # stream service logs
 make reset       # wipe local volumes and rebuild
@@ -109,6 +110,6 @@ Follow the repo working rules in `CLAUDE.md`.
 
 ## Source of truth docs
 
-- Product strategy and phase plan: `via-wiki/product/roadmap.md` (living, authoritative)
-- Architecture and ADRs: `via-wiki/product/decisions/`
-- Context index: `via-wiki/index.md`
+- Product strategy and phase plan: `routax-wiki/product/roadmap.md` (living, authoritative)
+- Architecture and ADRs: `routax-wiki/product/decisions/`
+- Context index: `routax-wiki/index.md`

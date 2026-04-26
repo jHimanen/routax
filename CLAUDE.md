@@ -1,6 +1,6 @@
 # Routax — Project Root
 
-Routax is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring). The core differentiator: **cyclist-controlled routing profiles** — riders tune the routing profile themselves per trip via presets, rather than picking from a fixed menu.
+Routax is a route planner for long-distance cyclists (bikepacking, audax, ultra, multi-day touring). The core differentiator: **cyclist-controlled routing profiles** — riders tune the routing profile themselves per trip routax presets, rather than picking from a fixed menu.
 
 The project capitalises on Komoot's March 2025 acquisition by Bending Spoons and subsequent community collapse (80%+ staff cut, trust broken, no consensus replacement).
 
@@ -9,9 +9,9 @@ The project capitalises on Komoot's March 2025 acquisition by Bending Spoons and
 ## Repo layout
 
 ```
-project-via/
+routax/
 ├── CLAUDE.md              ← you are here
-├── via-wiki/              ← Obsidian knowledge wiki (wiki operating manual: via-wiki/CLAUDE.md)
+├── routax-wiki/              ← Obsidian knowledge wiki (wiki operating manual: routax-wiki/CLAUDE.md)
 │
 ├── apps/
 │   ├── web/               Next.js + MapLibre
@@ -28,16 +28,16 @@ The monorepo directories exist and are being filled in phase order per the livin
 
 ## Where knowledge lives
 
-All cycling domain knowledge, product decisions, competitor research, architecture rationale, and the 7-phase build plan live in **`via-wiki/`**. Before touching code, check the wiki for context:
+All cycling domain knowledge, product decisions, competitor research, architecture rationale, and the 7-phase build plan live in **`routax-wiki/`**. Before touching code, check the wiki for context:
 
-- `via-wiki/overview.md` — living thesis, positioning, target users
-- `via-wiki/product/roadmap.md` — authoritative living 7-phase build plan (€0 → break-even)
-- `via-wiki/raw/via-roadmap.md` — immutable original source artifact
-- `via-wiki/product/decisions/` — ADR-style routing engine and frontend choices
-- `via-wiki/concepts/engineering/` — adapter pattern, phased build, SaaS stack
-- `via-wiki/index.md` — full content catalogue
+- `routax-wiki/overview.md` — living thesis, positioning, target users
+- `routax-wiki/product/roadmap.md` — authoritative living 7-phase build plan (€0 → break-even)
+- `routax-wiki/raw/via-roadmap.md` — immutable original source artifact
+- `routax-wiki/product/decisions/` — ADR-style routing engine and frontend choices
+- `routax-wiki/concepts/engineering/` — adapter pattern, phased build, SaaS stack
+- `routax-wiki/index.md` — full content catalogue
 
-For wiki operations (ingest, lint, refactor) follow `via-wiki/CLAUDE.md`. Never edit anything under `via-wiki/raw/`.
+For wiki operations (ingest, lint, refactor) follow `routax-wiki/CLAUDE.md`. Never edit anything under `routax-wiki/raw/`.
 
 ---
 
@@ -49,11 +49,11 @@ Goal: a route planner running entirely on Docker on the laptop. Plan a cycling r
 
 ### Phase 1 deliverables
 - Monorepo structure: `apps/web`, `apps/api`, `packages/shared`, `infra/docker`
-- `docker-compose.local.yml`: Postgres+PostGIS, GraphHopper (Finland extract), MinIO, MailHog, Caddy (Redis deliberately deferred — see `via-wiki/product/decisions/postgres-first-defer-redis.md`)
+- `docker-compose.local.yml`: Postgres+PostGIS, GraphHopper (Finland extract), MinIO, MailHog, Caddy (Redis deliberately deferred — see `routax-wiki/product/decisions/postgres-first-defer-redis.md`)
 - Next.js + MapLibre GL frontend with local tile source (MapTiler dev key)
 - Fastify API with `/route` endpoint proxying to GraphHopper
 - One custom GraphHopper profile with three parameters: `avoid_traffic`, `prefer_quiet_surfaces`, `max_gradient`
-- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider`, `RoutingProvider`, `QueueProvider`, `CacheProvider` — all backed by local implementations. Auth and payments are true stubs; the rest speak real protocols locally (SMTP → MailHog, S3 → MinIO, HTTP → GraphHopper; queue/cache on Postgres via `FOR UPDATE SKIP LOCKED` and keyed TTL; analytics to a Postgres `analytics_events` table that stays the system of record through Phase 5 — see `via-wiki/product/decisions/defer-posthog-for-postgres-analytics.md`)
+- Adapter interfaces: `AuthProvider`, `PaymentProvider`, `EmailProvider`, `StorageProvider`, `AnalyticsProvider`, `RoutingProvider`, `QueueProvider`, `CacheProvider` — all backed by local implementations. Auth and payments are true stubs; the rest speak real protocols locally (SMTP → MailHog, S3 → MinIO, HTTP → GraphHopper; queue/cache on Postgres via `FOR UPDATE SKIP LOCKED` and keyed TTL; analytics to a Postgres `analytics_events` table that stays the system of record through Phase 5 — see `routax-wiki/product/decisions/defer-posthog-for-postgres-analytics.md`)
 
 ### Phase 1 "done" signal
 Open `localhost:3000`, click two points on a Finland map, see a cycling route, adjust sliders that meaningfully change the route.
@@ -75,7 +75,7 @@ Open `localhost:3000`, click two points on a Finland map, see a cycling route, a
 | Deploy (Phase 4+) | Coolify on Hetzner | Self-hosted Heroku-like UX |
 | Mobile offline routing (Phase 7) | BRouter | More expressive DSL than GraphHopper for offline |
 
-Full rationale in `via-wiki/product/decisions/`.
+Full rationale in `routax-wiki/product/decisions/`.
 
 ---
 
@@ -150,7 +150,7 @@ Full rationale in `via-wiki/product/decisions/`.
 
 ## What Claude does NOT do here
 
-- Does not edit anything under `via-wiki/raw/` — those are immutable source documents.
+- Does not edit anything under `routax-wiki/raw/` — those are immutable source documents.
 - Does not invent citations or make claims not grounded in wiki sources.
 - Does not skip phases or add features ahead of their phase gate — the ordering is intentional.
 - Does not write the mobile app until web paid conversion is proven (Phase 7 gate).
