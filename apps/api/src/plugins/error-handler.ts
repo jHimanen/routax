@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import type { FastifyError, FastifyInstance } from "fastify";
 
 export function setupErrorHandler(app: FastifyInstance): void {
@@ -13,6 +14,7 @@ export function setupErrorHandler(app: FastifyInstance): void {
         .send({ error: { code: "REQUEST_ERROR", message: error.message } });
     }
     request.log.error({ err: error }, "unhandled error");
+    Sentry.captureException(error);
     return reply
       .status(500)
       .send({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });

@@ -1,8 +1,10 @@
 import { buildApp } from "./app.js";
 import { createContainer, createPool } from "./container.js";
 import { runMigrations } from "./migrations/runner.js";
+import { initSentry } from "./sentry.js";
 
 const start = async (): Promise<void> => {
+  initSentry();
   const pool = createPool();
 
   await runMigrations(pool);

@@ -1,4 +1,5 @@
 import { RouteRequestSchema } from "@routax/shared";
+import * as Sentry from "@sentry/node";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { Container } from "../container.js";
@@ -21,6 +22,18 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         { userId: user.id, upstreamMs: Date.now() - t0 },
         "graphhopper response received",
       );
+
+      Sentry.addBreadcrumb({
+        category: "route",
+        message: "route planned",
+        data: {
+          avoidTraffic: body.profile.avoidTraffic,
+          preferQuietSurfaces: body.profile.preferQuietSurfaces,
+          maxGradient: body.profile.maxGradient,
+          distanceM: result.distance,
+        },
+        level: "info",
+      });
 
       return result;
     });
