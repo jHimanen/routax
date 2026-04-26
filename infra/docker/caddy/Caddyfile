@@ -2,7 +2,7 @@
   admin off
 }
 
-localhost {
+routax.cc, localhost {
   tls internal
 
   handle /api/* {
