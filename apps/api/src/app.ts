@@ -20,12 +20,14 @@ const DEFAULT_CORS_ORIGINS = [
  * `CORS_ORIGIN` is still read when the new name is unset (backwards compatibility).
  */
 function resolveAllowedCorsOrigins(): Set<string> {
-  const raw =
-    process.env.ROUTAX_CORS_ALLOWLIST?.trim() || process.env.CORS_ORIGIN?.trim();
+  const raw = process.env.ROUTAX_CORS_ALLOWLIST?.trim() || process.env.CORS_ORIGIN?.trim();
   if (!raw) {
     return new Set(DEFAULT_CORS_ORIGINS);
   }
-  const parsed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const parsed = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return new Set(parsed.length > 0 ? parsed : DEFAULT_CORS_ORIGINS);
 }
 
@@ -59,8 +61,7 @@ export function buildApp(container: Container) {
       return payload;
     }
     const current = reply.getHeader("Access-Control-Allow-Origin");
-    const mustReplace =
-      Array.isArray(current) || typeof current !== "string" || current !== origin;
+    const mustReplace = Array.isArray(current) || typeof current !== "string" || current !== origin;
     if (mustReplace) {
       reply.removeHeader("Access-Control-Allow-Origin");
       reply.header("Access-Control-Allow-Origin", origin);
