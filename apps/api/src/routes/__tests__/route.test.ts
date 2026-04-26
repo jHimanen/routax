@@ -1,5 +1,5 @@
 import type { RouteResult } from "@routax/shared";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../app.js";
 import type { Container } from "../../container.js";
 
@@ -113,5 +113,50 @@ describe("POST /route", () => {
     expect(res.statusCode).toBe(500);
     const body = res.json<{ error: { code: string } }>();
     expect(body.error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+describe("CORS Access-Control-Allow-Origin", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("reflects a single request origin when ROUTAX_CORS_ALLOWLIST is comma-separated", async () => {
+    vi.stubEnv("ROUTAX_CORS_ALLOWLIST", "https://localhost,https://routax.cc");
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "https://routax.cc" },
+    });
+
+    expect(res.headers["access-control-allow-origin"]).toBe("https://routax.cc");
+    await app.close();
+  });
+
+  it("omits Access-Control-Allow-Origin for origins not in the allowlist", async () => {
+    vi.stubEnv("ROUTAX_CORS_ALLOWLIST", "https://routax.cc");
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "https://attacker.example" },
+    });
+
+    expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+    await app.close();
+  });
+
+  it("still reads legacy CORS_ORIGIN when ROUTAX_CORS_ALLOWLIST is unset", async () => {
+    vi.stubEnv("CORS_ORIGIN", "https://localhost,https://routax.cc");
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "https://routax.cc" },
+    });
+
+    expect(res.headers["access-control-allow-origin"]).toBe("https://routax.cc");
+    await app.close();
   });
 });
