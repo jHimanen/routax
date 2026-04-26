@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { FlagContext, FlagRule, FeatureFlagProvider } from "@routax/shared";
+import type { FeatureFlagProvider, FlagContext, FlagRule } from "@routax/shared";
 import { FlagRuleSchema } from "@routax/shared";
 import type { Pool } from "pg";
 

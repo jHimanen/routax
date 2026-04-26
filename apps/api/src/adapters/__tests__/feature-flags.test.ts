@@ -1,10 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  PostgresFeatureFlagProvider,
-  evaluateFlag,
-} from "../PostgresFeatureFlagProvider.js";
 import type { FlagContext, FlagRule } from "@routax/shared";
 import { FlagRuleSchema } from "@routax/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PostgresFeatureFlagProvider, evaluateFlag } from "../PostgresFeatureFlagProvider.js";
 
 const LOCAL_CTX: FlagContext = { environment: "local" };
 const USER_CTX: FlagContext = { userId: "stub-user-1", environment: "local" };
@@ -104,15 +101,11 @@ describe("FlagRuleSchema", () => {
   });
 
   it("rejects non-boolean environment value", () => {
-    expect(
-      FlagRuleSchema.safeParse({ environments: { local: "yes" } }).success,
-    ).toBe(false);
+    expect(FlagRuleSchema.safeParse({ environments: { local: "yes" } }).success).toBe(false);
   });
 
   it("rejects unknown environment key", () => {
-    expect(
-      FlagRuleSchema.safeParse({ environments: { prod: true } }).success,
-    ).toBe(false);
+    expect(FlagRuleSchema.safeParse({ environments: { prod: true } }).success).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
-import { Pool } from "pg";
 import { FlagRuleSchema } from "@routax/shared";
+import { Pool } from "pg";
 
 const pool = new Pool({
   host: process.env.POSTGRES_HOST ?? "localhost",

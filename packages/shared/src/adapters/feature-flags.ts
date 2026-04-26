@@ -3,9 +3,7 @@ import type { UserId } from "../types/user";
 
 export const FlagRuleSchema = z.object({
   default: z.boolean().optional(),
-  environments: z
-    .record(z.enum(["local", "staging", "production"]), z.boolean())
-    .optional(),
+  environments: z.record(z.enum(["local", "staging", "production"]), z.boolean()).optional(),
   users: z.array(z.string()).optional(),
   percentage: z.number().int().min(0).max(100).optional(),
 });
