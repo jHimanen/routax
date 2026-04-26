@@ -13,6 +13,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
+ARG SENTRY_RELEASE=dev
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
+
 WORKDIR /app/apps/api
 
 CMD ["pnpm", "dev"]

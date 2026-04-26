@@ -6,7 +6,8 @@ up:
 	docker compose -f $(COMPOSE_FILE) up -d
 
 up-build:
-	docker compose -f $(COMPOSE_FILE) up -d --build --pull always
+	docker compose -f $(COMPOSE_FILE) up -d --build --pull always \
+	  --build-arg SENTRY_RELEASE=$(shell git rev-parse --short HEAD)
 
 down:
 	docker compose -f $(COMPOSE_FILE) down
