@@ -45,3 +45,58 @@ export const RouteResultSchema = z.object({
 });
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
+
+const RouteGeometrySchema = z
+  .object({
+    type: z.literal("LineString"),
+    coordinates: z.array(z.tuple([z.number(), z.number()])),
+  })
+  .superRefine((value, ctx) => {
+    if (value.coordinates.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "LineString must contain at least 2 points",
+        path: ["coordinates"],
+      });
+    }
+  });
+
+export const SavedRouteSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string(),
+  name: z.string().min(1),
+  geometry: RouteGeometrySchema,
+  profile: RouteRequestSchema.shape.profile,
+  distance: z.number().int().nonnegative(),
+  duration: z.number().int().nonnegative(),
+  ascent: z.number().int(),
+  descent: z.number().int(),
+  elevationProfile: z.array(z.number()),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const CreateRouteRequestSchema = z.object({
+  name: z.string().min(1),
+  profile: RouteRequestSchema.shape.profile,
+  geometry: RouteGeometrySchema,
+  distance: z.number().int().nonnegative(),
+  duration: z.number().int().nonnegative(),
+  ascent: z.number().int(),
+  descent: z.number().int(),
+  elevationProfile: z.array(z.number()),
+});
+
+export const UpdateRouteRequestSchema = z.object({
+  name: z.string().min(1),
+});
+
+export const ListRoutesResponseSchema = z.object({
+  items: z.array(SavedRouteSchema),
+  nextCursor: z.string().optional(),
+});
+
+export type SavedRoute = z.infer<typeof SavedRouteSchema>;
+export type CreateRouteRequest = z.infer<typeof CreateRouteRequestSchema>;
+export type UpdateRouteRequest = z.infer<typeof UpdateRouteRequestSchema>;
+export type ListRoutesResponse = z.infer<typeof ListRoutesResponseSchema>;

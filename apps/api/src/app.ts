@@ -7,6 +7,7 @@ import { setupErrorHandler } from "./plugins/error-handler.js";
 import { registerFlagsRoute } from "./routes/flags.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerRouteEndpoint } from "./routes/route.js";
+import { registerRoutesEndpoints } from "./routes/routes.js";
 
 const DEFAULT_CORS_ORIGINS = [
   "http://localhost:3000",
@@ -76,6 +77,7 @@ export function buildApp(container: Container) {
   registerHealthRoute(app);
   registerRouteEndpoint(app, container);
   registerFlagsRoute(app, container);
+  registerRoutesEndpoints(app, container);
 
   return app;
 }
