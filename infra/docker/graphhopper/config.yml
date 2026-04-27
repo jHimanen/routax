@@ -2,6 +2,10 @@ graphhopper:
   datareader.file: /data/finland-latest.osm.pbf
   graph.location: /data/graph-cache
 
+  graph.elevation.provider: srtm
+  graph.elevation.cache_dir: /data/elevation-cache
+  graph.elevation.dataaccess: MMAP
+
   import.osm.ignored_highways: motorway,trunk
 
   profiles:

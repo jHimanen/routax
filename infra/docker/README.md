@@ -41,3 +41,26 @@ make reset   # stop services and DELETE all volumes (fresh start)
 - `make reset` wipes all named volumes — use when you need a clean slate.
 - MailHog has no persistent volume; mail is ephemeral.
 - The `minio-bootstrap` container runs once on first `make up` to create the `routax-local` bucket, then exits.
+
+## GraphHopper elevation (SRTM)
+
+GraphHopper downloads SRTM elevation tiles on first boot and caches them in the
+`graphhopper-elevation` Docker volume (~200–400 MB for Finland). Subsequent
+boots reuse the cache.
+
+**After pulling changes that add or modify elevation config, you must invalidate
+the graph cache before starting — elevation is indexed at import time:**
+
+```sh
+rm -rf infra/docker/graphhopper/data/graph-cache
+make up
+```
+
+Watch the first-boot download in the logs:
+
+```sh
+docker compose -f infra/docker/docker-compose.local.yml logs -f graphhopper
+```
+
+CI runs without SRTM tiles; `ascent`/`descent` assertions in the integration
+test suite require a locally running GraphHopper stack.
