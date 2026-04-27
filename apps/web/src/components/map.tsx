@@ -4,7 +4,9 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFeatureFlag } from "../hooks/useFeatureFlag";
 import { useRoute } from "../hooks/useRoute";
+import { createRoute } from "../lib/api";
 import { RoutePanel } from "./RoutePanel";
 
 const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
@@ -199,6 +201,28 @@ export function RouteMap(): React.JSX.Element {
   const [mapLoaded, setMapLoaded] = useState(false);
 
   const { result, isLoading, error } = useRoute(start, end, profile);
+  const flagSavedUi = useFeatureFlag("saved_routes_ui");
+  const savedRoutesUi = flagSavedUi === true;
+
+  const handleSave = useCallback(
+    async (name: string) => {
+      if (!result) {
+        throw new Error("No route to save");
+      }
+      const created = await createRoute({
+        name,
+        profile,
+        geometry: result.geometry,
+        distance: Math.round(result.distance),
+        duration: Math.round(result.duration),
+        ascent: Math.round(result.ascent),
+        descent: Math.round(result.descent),
+        elevationProfile: result.elevationProfile,
+      });
+      return created.id;
+    },
+    [result, profile],
+  );
 
   const handleReset = useCallback(() => {
     setStart(null);
@@ -248,6 +272,8 @@ export function RouteMap(): React.JSX.Element {
         isLoading={isLoading}
         error={error}
         onReset={handleReset}
+        savedRoutesUi={savedRoutesUi}
+        onSave={handleSave}
       />
     </div>
   );

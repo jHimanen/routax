@@ -142,3 +142,144 @@ body {
 .route-panel-reset:hover {
   background: #e5e7eb;
 }
+
+.route-panel-save {
+  align-self: stretch;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.route-panel-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-save:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.route-panel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0 0;
+  border: none;
+}
+
+.route-panel-form-legend {
+  padding: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.route-panel-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.route-panel-form-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.route-panel-form-error {
+  margin: 0;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.route-panel-form-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.route-panel-form-submit,
+.route-panel-form-cancel {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-panel-form-submit {
+  border: none;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.route-panel-form-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-form-submit:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.route-panel-form-cancel {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+}
+
+.route-panel-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.route-panel-saved-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.route-panel-saved-url {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1d4ed8;
+  font-size: 11px;
+  text-align: left;
+  word-break: break-all;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.route-panel-saved-copy {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.route-panel-saved-dismiss {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
