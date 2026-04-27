@@ -180,6 +180,34 @@ describe("/routes endpoints", () => {
     await app.close();
   });
 
+  it("emits route_listed on GET /routes with list count", async () => {
+    const app = makeAppForUser(primaryUserId);
+    await pool.query("DELETE FROM routes WHERE user_id = $1", [primaryUserId]);
+    await pool.query("DELETE FROM analytics_events WHERE user_id = $1", [primaryUserId]);
+
+    const postResponse = await app.inject({
+      method: "POST",
+      url: "/routes",
+      payload: { ...payload, name: "Listed count check" },
+    });
+    expect(postResponse.statusCode).toBe(200);
+
+    const listResponse = await app.inject({ method: "GET", url: "/routes?limit=5" });
+    expect(listResponse.statusCode).toBe(200);
+    const list = listResponse.json<{ items: { id: string }[] }>();
+    expect(list.items).toHaveLength(1);
+
+    const listed = await pool.query<{ count: string | null }>(
+      `SELECT properties->>'count' as count
+       FROM analytics_events
+       WHERE user_id = $1 AND event = 'route_listed'`,
+      [primaryUserId],
+    );
+    expect(listed.rows).toHaveLength(1);
+    expect(listed.rows[0]?.count).toBe("1");
+    await app.close();
+  });
+
   it("enforces user scoping across read/update/delete", async () => {
     const ownerApp = makeAppForUser(primaryUserId);
     const otherUserApp = makeAppForUser(alternateUserId);
