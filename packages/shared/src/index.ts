@@ -13,3 +13,4 @@ export * from "./adapters/analytics";
 export * from "./adapters/routing";
 export * from "./adapters/queue";
 export * from "./adapters/cache";
+export * from "./adapters/feature-flags";

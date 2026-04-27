@@ -1,8 +1,16 @@
+import * as path from "node:path";
 import { config } from "dotenv";
 import { Pool } from "pg";
 import { runMigrations } from "./src/migrations/runner.js";
 
-config({ path: ".env.test", override: false });
+for (const p of [
+  path.join(process.cwd(), ".env.test.local"),
+  path.join(process.cwd(), ".env.test"),
+  path.join(process.cwd(), "..", "..", ".env.local"),
+  path.join(process.cwd(), "..", "..", ".env"),
+]) {
+  config({ path: p, override: false });
+}
 
 export async function setup(): Promise<void> {
   const pool = new Pool({

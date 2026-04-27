@@ -4,6 +4,7 @@ import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod
 import type { Container } from "./container.js";
 import { setupAuthContext } from "./plugins/auth-context.js";
 import { setupErrorHandler } from "./plugins/error-handler.js";
+import { registerFlagsRoute } from "./routes/flags.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerRouteEndpoint } from "./routes/route.js";
 
@@ -74,6 +75,7 @@ export function buildApp(container: Container) {
 
   registerHealthRoute(app);
   registerRouteEndpoint(app, container);
+  registerFlagsRoute(app, container);
 
   return app;
 }
