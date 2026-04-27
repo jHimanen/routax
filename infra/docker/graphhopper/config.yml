@@ -2,9 +2,11 @@ graphhopper:
   datareader.file: /data/finland-latest.osm.pbf
   graph.location: /data/graph-cache
 
-  graph.elevation.provider: srtm
+  graph.elevation.provider: gmted
   graph.elevation.cache_dir: /data/elevation-cache
   graph.elevation.dataaccess: MMAP
+
+  graph.encoded_values: average_slope
 
   import.osm.ignored_highways: motorway,trunk
 

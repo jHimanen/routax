@@ -4,8 +4,8 @@ interface GhResponse {
   paths: Array<{
     distance: number;
     time: number;
-    ascent: number;
-    descent: number;
+    ascend: number;
+    descend: number;
     points: {
       type: "LineString";
       coordinates: Array<[number, number, number]>;
@@ -94,8 +94,8 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       duration: Math.round(path.time / 1000),
       geometry: { type: "LineString", coordinates },
       elevationProfile,
-      ascent: path.ascent,
-      descent: path.descent,
+      ascent: path.ascend,
+      descent: path.descend,
     };
   }
 }

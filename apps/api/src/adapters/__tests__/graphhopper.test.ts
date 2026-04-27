@@ -59,8 +59,8 @@ describe("GraphhopperRoutingProvider", () => {
         {
           distance: 2000,
           time: 400000,
-          ascent: 30,
-          descent: 25,
+          ascend: 30,
+          descend: 25,
           points: {
             type: "LineString",
             coordinates: [
