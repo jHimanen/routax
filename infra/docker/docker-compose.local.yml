@@ -95,6 +95,7 @@ services:
       - ./graphhopper/config.yml:/graphhopper/config-example.yml:ro
       - ./graphhopper/custom_models:/graphhopper/custom_models:ro
       - ./graphhopper/data:/data
+      - graphhopper-elevation:/data/elevation-cache
     ports:
       - "${GH_PORT:-8989}:8989"
     healthcheck:
@@ -166,3 +167,4 @@ volumes:
   routax-minio-data:
   caddy-data:
   caddy-config:
+  graphhopper-elevation:

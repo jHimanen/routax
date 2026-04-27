@@ -4,11 +4,11 @@ interface GhResponse {
   paths: Array<{
     distance: number;
     time: number;
-    ascent?: number;
-    descent?: number;
+    ascend: number;
+    descend: number;
     points: {
       type: "LineString";
-      coordinates: Array<[number, number]>;
+      coordinates: Array<[number, number, number]>;
     };
   }>;
 }
@@ -16,6 +16,7 @@ interface GhResponse {
 function buildCustomModel(profile: RouteRequest["profile"]): unknown {
   const t = profile.avoidTraffic;
   const q = profile.preferQuietSurfaces;
+  const g = profile.maxGradient;
 
   return {
     priority: [
@@ -30,6 +31,10 @@ function buildCustomModel(profile: RouteRequest["profile"]): unknown {
       {
         if: "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
         multiply_by: (1 + q * 0.8).toFixed(2),
+      },
+      {
+        if: `average_slope > ${g}`,
+        multiply_by: "0.01",
       },
     ],
     distance_influence: 70,
@@ -50,6 +55,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
         [request.end.lng, request.end.lat],
       ],
       profile: "bike",
+      elevation: true,
       points_encoded: false,
       "ch.disable": true,
       custom_model: buildCustomModel(request.profile),
@@ -73,12 +79,23 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       throw new Error("GraphHopper returned no paths");
     }
 
+    const coords3d = path.points.coordinates;
+    const coordinates: [number, number][] = coords3d.map(([lng, lat]) => [lng, lat]);
+    const elevationProfile: number[] = coords3d.map(([, , ele]) => ele);
+
+    if (elevationProfile.length !== coordinates.length) {
+      throw new Error(
+        `GH elevation/coordinate length mismatch: ${elevationProfile.length} vs ${coordinates.length}`,
+      );
+    }
+
     return {
       distance: path.distance,
       duration: Math.round(path.time / 1000),
-      geometry: path.points,
-      ascent: path.ascent,
-      descent: path.descent,
+      geometry: { type: "LineString", coordinates },
+      elevationProfile,
+      ascent: path.ascend,
+      descent: path.descend,
     };
   }
 }

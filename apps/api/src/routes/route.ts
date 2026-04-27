@@ -31,6 +31,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
           preferQuietSurfaces: body.profile.preferQuietSurfaces,
           maxGradient: body.profile.maxGradient,
           distanceM: result.distance,
+          ascent: result.ascent,
         },
         level: "info",
       });

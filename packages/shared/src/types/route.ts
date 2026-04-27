@@ -39,8 +39,9 @@ export const RouteResultSchema = z.object({
     type: z.literal("LineString"),
     coordinates: z.array(z.tuple([z.number(), z.number()])),
   }),
-  ascent: z.number().optional(),
-  descent: z.number().optional(),
+  elevationProfile: z.array(z.number()),
+  ascent: z.number(),
+  descent: z.number(),
 });
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
