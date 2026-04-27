@@ -1,5 +1,16 @@
+import * as path from "node:path";
+import dotenv from "dotenv";
 import { FlagRuleSchema } from "@routax/shared";
 import { Pool } from "pg";
+
+for (const p of [
+  path.join(process.cwd(), ".env.local"),
+  path.join(process.cwd(), ".env"),
+  path.join(process.cwd(), "..", "..", ".env.local"),
+  path.join(process.cwd(), "..", "..", ".env"),
+]) {
+  dotenv.config({ path: p });
+}
 
 const pool = new Pool({
   host: process.env.POSTGRES_HOST ?? "localhost",
