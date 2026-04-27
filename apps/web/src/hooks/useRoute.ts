@@ -2,18 +2,25 @@ import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
 import { useEffect, useRef, useState } from "react";
 import { postRoute } from "../lib/api";
 
-interface UseRouteResult {
+export interface UseRouteResult {
   result: RouteResult | null;
   isLoading: boolean;
   error: string | null;
+}
+
+export interface UseRouteOptions {
+  /** When set, this result is returned and the `/api/route` debounced fetch is disabled. */
+  resultOverride: RouteResult | null;
 }
 
 export function useRoute(
   start: LatLng | null,
   end: LatLng | null,
   profile: RoutingProfile,
+  options: UseRouteOptions = { resultOverride: null },
 ): UseRouteResult {
-  const [result, setResult] = useState<RouteResult | null>(null);
+  const { resultOverride } = options;
+  const [fetched, setFetched] = useState<RouteResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,18 +28,29 @@ export function useRoute(
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!start || !end) {
-      setResult(null);
+    if (resultOverride) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      abortRef.current?.abort();
       setError(null);
       setIsLoading(false);
       return;
     }
 
-    // Clear any pending debounce
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!start || !end) {
+      setFetched(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
 
     timerRef.current = setTimeout(async () => {
-      // Abort any in-flight request
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -42,21 +60,28 @@ export function useRoute(
 
       try {
         const data = await postRoute({ start, end, profile }, controller.signal);
-        setResult(data);
+        setFetched(data);
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
         setError(err instanceof Error ? err.message : "Routing failed");
-        setResult(null);
+        setFetched(null);
       } finally {
         setIsLoading(false);
       }
     }, 300);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [start, end, profile]);
+  }, [start, end, profile, resultOverride]);
 
+  const result = resultOverride ?? fetched;
+  if (resultOverride) {
+    return { result, isLoading: false, error: null };
+  }
   return { result, isLoading, error };
 }

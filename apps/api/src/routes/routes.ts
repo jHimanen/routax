@@ -44,10 +44,16 @@ export function registerRoutesEndpoints(app: FastifyInstance, container: Contain
   app.get("/routes", {}, async (request) => {
     const user = await container.auth.requireUser(request);
     const query = readListQuery(request.query);
-    return container.routes.listByUser(user.id, {
+    const listResult = await container.routes.listByUser(user.id, {
       limit: query.limit,
       cursor: query.cursor,
     });
+    await container.analytics.track({
+      name: "route_listed",
+      userId: user.id,
+      properties: { count: listResult.items.length },
+    });
+    return listResult;
   });
 
   app.get("/routes/:id", {}, async (request, reply) => {
