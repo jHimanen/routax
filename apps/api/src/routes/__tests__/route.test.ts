@@ -19,6 +19,9 @@ const STUB_RESULT: RouteResult = {
       [24.9506, 60.1791],
     ],
   },
+  elevationProfile: [10, 12],
+  ascent: 25,
+  descent: 30,
 };
 
 function makeContainer(overrides?: Partial<Container>): Container {
@@ -34,15 +37,19 @@ function makeContainer(overrides?: Partial<Container>): Container {
       }),
     },
     routing: { planRoute: async () => STUB_RESULT },
-    payment: { isFeatureAvailable: async () => false },
+    payment: {
+      getSubscriptionStatus: async () => ({ tier: "free" }),
+      createCheckoutSession: async () => ({ url: "https://billing.routax.local" }),
+      handleWebhook: async () => {},
+    },
     email: { send: async () => {} },
     storage: {
-      upload: async () => "key",
-      download: async () => Buffer.from(""),
-      delete: async () => {},
+      putObject: async () => ({ key: "key", bucket: "bucket", size: 0 }),
+      getObject: async () => Buffer.from(""),
+      deleteObject: async () => {},
       getSignedUrl: async () => "url",
     },
-    analytics: { track: async () => {} },
+    analytics: { track: async () => {}, identify: async () => {} },
     queue: {
       enqueue: async () => "id",
       claim: async () => null,
@@ -50,6 +57,20 @@ function makeContainer(overrides?: Partial<Container>): Container {
       fail: async () => {},
     },
     cache: { get: async () => null, set: async () => {}, delete: async () => {} },
+    flags: {
+      isEnabled: async () => false,
+      getVariant: async () => undefined,
+      evaluateAll: async () => ({}),
+    },
+    routes: {
+      create: async () => {
+        throw new Error("not used");
+      },
+      listByUser: async () => ({ items: [], nextCursor: undefined }),
+      get: async () => null,
+      rename: async () => null,
+      delete: async () => false,
+    },
     close: async () => {},
     ...overrides,
   };
