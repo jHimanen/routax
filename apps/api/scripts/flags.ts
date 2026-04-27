@@ -1,6 +1,6 @@
 import * as path from "node:path";
-import dotenv from "dotenv";
 import { FlagRuleSchema } from "@routax/shared";
+import dotenv from "dotenv";
 import { Pool } from "pg";
 
 for (const p of [
