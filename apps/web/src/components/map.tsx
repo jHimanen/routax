@@ -4,9 +4,9 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng, RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useFeatureFlag } from "../hooks/useFeatureFlag";
+import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
-import { createRoute } from "../lib/api";
+import { createRoute, getRoute } from "../lib/api";
 
 function routeResultFromSaved(saved: SavedRoute): RouteResult {
   return {
@@ -218,7 +218,7 @@ const DEFAULT_PROFILE: RoutingProfile = {
   maxGradient: 20,
 };
 
-export function RouteMap(): React.JSX.Element {
+export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): React.JSX.Element {
   const [start, setStart] = useState<LatLng | null>(null);
   const [end, setEnd] = useState<LatLng | null>(null);
   const [profile, setProfile] = useState<RoutingProfile>(DEFAULT_PROFILE);
@@ -230,12 +230,18 @@ export function RouteMap(): React.JSX.Element {
     profile: RoutingProfile;
   } | null>(null);
   const [routeModified, setRouteModified] = useState(false);
+  const [deepLinkResolved, setDeepLinkResolved] = useState(
+    () => !initialRouteId || initialRouteId.trim() === "",
+  );
+
+  const { isReady, flags } = useFeatureFlags();
+  const savedFlagOn = flags.saved_routes_ui === true;
+  const savedRoutesUi = isReady && savedFlagOn;
+  const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
   const { result, isLoading, error } = useRoute(start, end, profile, {
     resultOverride,
   });
-  const flagSavedUi = useFeatureFlag("saved_routes_ui");
-  const savedRoutesUi = flagSavedUi === true;
 
   const applySavedRoute = useCallback((saved: SavedRoute) => {
     const coords = saved.geometry.coordinates;
@@ -253,6 +259,39 @@ export function RouteMap(): React.JSX.Element {
     setLoadBaseline({ start: s, end: e, profile: { ...saved.profile } });
     setRouteModified(false);
   }, []);
+
+  useEffect(() => {
+    if (!initialRouteId || initialRouteId.trim() === "") {
+      return;
+    }
+    if (!isReady) {
+      return;
+    }
+    if (!savedFlagOn) {
+      setDeepLinkResolved(true);
+      return;
+    }
+    const ac = new AbortController();
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getRoute(initialRouteId, ac.signal);
+        if (!cancelled && r) {
+          applySavedRoute(r);
+        }
+      } catch {
+        // 404/validation handled by getRoute; network errors fall through
+      } finally {
+        if (!cancelled) {
+          setDeepLinkResolved(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [initialRouteId, isReady, savedFlagOn, applySavedRoute]);
 
   useEffect(() => {
     if (!resultOverride || !loadBaseline) {
@@ -303,6 +342,9 @@ export function RouteMap(): React.JSX.Element {
 
   const handleMapClick = useCallback(
     (lngLat: LatLng) => {
+      if (initialRouteId && !deepLinkResolved) {
+        return;
+      }
       if (!start) {
         setStart(lngLat);
       } else if (!end) {
@@ -313,7 +355,7 @@ export function RouteMap(): React.JSX.Element {
         setEnd(lngLat);
       }
     },
-    [start, end],
+    [start, end, initialRouteId, deepLinkResolved],
   );
 
   // Escape clears waypoints
@@ -349,6 +391,7 @@ export function RouteMap(): React.JSX.Element {
         onSelectSaved={applySavedRoute}
         savedReadMode={resultOverride !== null}
         routeModified={routeModified}
+        deepLinkLoading={deepLinkLoading}
       />
     </div>
   );

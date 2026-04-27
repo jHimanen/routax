@@ -179,6 +179,19 @@ body {
   }
 }
 
+.route-panel--deeplink-load {
+  filter: opacity(0.7);
+  pointer-events: none;
+  user-select: none;
+}
+
+.route-panel-deeplink-status {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
 .route-panel-sliders {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@
 import type { RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { listRoutes } from "../lib/api";
+import { buildRouteUrl } from "../lib/url";
 
 interface RoutePanelProps {
   start: boolean;
@@ -21,6 +22,8 @@ interface RoutePanelProps {
   savedReadMode: boolean;
   /** True after the user changes profile or waypoints while a save was loadable. */
   routeModified: boolean;
+  /** Deep-link rehydration in progress — skeleton panel, no save/load. */
+  deepLinkLoading: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -30,20 +33,6 @@ function formatDuration(seconds: number): string {
     return `${h}h ${m}min`;
   }
   return `${m}min`;
-}
-
-function getCanonicalAppOrigin(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, "");
-  }
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  return "";
-}
-
-function buildRouteUrl(routeId: string): string {
-  return `${getCanonicalAppOrigin()}/?route=${encodeURIComponent(routeId)}`;
 }
 
 const NAME_MIN = 1;
@@ -76,6 +65,7 @@ export function RoutePanel({
   onSelectSaved,
   savedReadMode,
   routeModified,
+  deepLinkLoading,
 }: RoutePanelProps): React.JSX.Element {
   const hint = !start ? "Click the map to place start" : !end ? "Click the map to place end" : null;
   const nameId = useId();
@@ -90,9 +80,10 @@ export function RoutePanel({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(false);
   const loadPanelRef = useRef<HTMLDivElement | null>(null);
+  const canUseSaved = savedRoutesUi && !deepLinkLoading;
 
   useEffect(() => {
-    if (!loadOpen || !savedRoutesUi) {
+    if (!loadOpen || !canUseSaved) {
       return;
     }
     setLoadPending(true);
@@ -114,7 +105,7 @@ export function RoutePanel({
     return () => {
       ac.abort();
     };
-  }, [loadOpen, savedRoutesUi]);
+  }, [loadOpen, canUseSaved]);
 
   useEffect(() => {
     if (!loadOpen) {
@@ -207,13 +198,19 @@ export function RoutePanel({
     }
   };
 
-  const showSaveForm = savedRoutesUi && result && (savePhase === "form" || savePhase === "saving");
-  const showSaved = savedRoutesUi && savePhase === "saved" && savedUrl;
-  const showSaveButton = savedRoutesUi && result && savePhase === "none" && !showSaved;
+  const showSaveForm = canUseSaved && result && (savePhase === "form" || savePhase === "saving");
+  const showSaved = canUseSaved && savePhase === "saved" && savedUrl;
+  const showSaveButton = canUseSaved && result && savePhase === "none" && !showSaved;
 
   return (
-    <aside className="route-panel">
-      {savedRoutesUi && (
+    <aside className={`route-panel${deepLinkLoading ? " route-panel--deeplink-load" : ""}`}>
+      {deepLinkLoading && (
+        <p className="route-panel-deeplink-status" aria-live="polite">
+          Loading route…
+        </p>
+      )}
+
+      {canUseSaved && (
         <div className="route-panel-header" ref={loadPanelRef}>
           <button
             type="button"
@@ -276,6 +273,7 @@ export function RoutePanel({
             max="1"
             step="0.01"
             value={profile.avoidTraffic}
+            disabled={deepLinkLoading}
             onChange={(e) => onProfileChange({ ...profile, avoidTraffic: Number(e.target.value) })}
           />
         </label>
@@ -287,6 +285,7 @@ export function RoutePanel({
             max="1"
             step="0.01"
             value={profile.preferQuietSurfaces}
+            disabled={deepLinkLoading}
             onChange={(e) =>
               onProfileChange({ ...profile, preferQuietSurfaces: Number(e.target.value) })
             }
@@ -300,6 +299,7 @@ export function RoutePanel({
             max="20"
             step="1"
             value={profile.maxGradient}
+            disabled={deepLinkLoading}
             onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
           />
         </label>
