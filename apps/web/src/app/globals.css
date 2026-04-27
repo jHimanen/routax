@@ -70,6 +70,109 @@ body {
   gap: 10px;
 }
 
+.route-panel-header {
+  position: relative;
+  margin: -2px 0 0;
+}
+
+.route-panel-load-trigger {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+}
+
+.route-panel-load-trigger:hover {
+  background: #f9fafb;
+}
+
+.route-panel-load-popover {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  margin-top: 4px;
+  width: 100%;
+  min-width: 200px;
+  max-height: 200px;
+  padding: 6px 0;
+  overflow: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+  border: 1px solid #e5e7eb;
+}
+
+.route-panel-load-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: #111827;
+}
+
+.route-panel-load-row:hover {
+  background: #f3f4f6;
+}
+
+.route-panel-load-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.route-panel-load-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.route-panel-load-status,
+.route-panel-load-empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.route-panel-load-error {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.route-panel-saved-hint {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.route-panel-modified {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b45309;
+}
+
 @media (max-width: 360px) {
   .route-panel {
     width: calc(100vw - 24px);

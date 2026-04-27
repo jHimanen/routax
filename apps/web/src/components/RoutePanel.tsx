@@ -1,7 +1,8 @@
 "use client";
 
-import type { RouteResult, RoutingProfile } from "@routax/shared";
+import type { RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { listRoutes } from "../lib/api";
 
 interface RoutePanelProps {
   start: boolean;
@@ -15,6 +16,11 @@ interface RoutePanelProps {
   /** When false, Save is hidden. */
   savedRoutesUi: boolean;
   onSave: (name: string) => Promise<string>;
+  onSelectSaved: (route: SavedRoute) => void;
+  /** True while showing a saved route's geometry before any live reroute. */
+  savedReadMode: boolean;
+  /** True after the user changes profile or waypoints while a save was loadable. */
+  routeModified: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -67,6 +73,9 @@ export function RoutePanel({
   onReset,
   savedRoutesUi,
   onSave,
+  onSelectSaved,
+  savedReadMode,
+  routeModified,
 }: RoutePanelProps): React.JSX.Element {
   const hint = !start ? "Click the map to place start" : !end ? "Click the map to place end" : null;
   const nameId = useId();
@@ -75,6 +84,52 @@ export function RoutePanel({
   const [formName, setFormName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [savedUrl, setSavedUrl] = useState("");
+
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [loadItems, setLoadItems] = useState<SavedRoute[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadPending, setLoadPending] = useState(false);
+  const loadPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loadOpen || !savedRoutesUi) {
+      return;
+    }
+    setLoadPending(true);
+    setLoadError(null);
+    const ac = new AbortController();
+    void listRoutes(5, ac.signal)
+      .then((res) => {
+        setLoadItems(res.items);
+        setLoadPending(false);
+      })
+      .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") {
+          return;
+        }
+        setLoadError(e instanceof Error ? e.message : "Failed to list routes");
+        setLoadItems([]);
+        setLoadPending(false);
+      });
+    return () => {
+      ac.abort();
+    };
+  }, [loadOpen, savedRoutesUi]);
+
+  useEffect(() => {
+    if (!loadOpen) {
+      return;
+    }
+    const onDown = (ev: PointerEvent) => {
+      if (loadPanelRef.current && !loadPanelRef.current.contains(ev.target as Node)) {
+        setLoadOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+    };
+  }, [loadOpen]);
 
   const resultSignature = result
     ? JSON.stringify([result.geometry.coordinates, result.distance, profile])
@@ -158,6 +213,60 @@ export function RoutePanel({
 
   return (
     <aside className="route-panel">
+      {savedRoutesUi && (
+        <div className="route-panel-header" ref={loadPanelRef}>
+          <button
+            type="button"
+            className="route-panel-load-trigger"
+            onClick={() => {
+              setLoadOpen((o) => !o);
+            }}
+            aria-expanded={loadOpen}
+            aria-haspopup="listbox"
+          >
+            Load
+          </button>
+          {loadOpen && (
+            <div className="route-panel-load-popover" aria-label="Recent saved routes">
+              {loadPending && <p className="route-panel-load-status">Loading…</p>}
+              {loadError && (
+                <p className="route-panel-load-error" role="alert">
+                  {loadError}
+                </p>
+              )}
+              {!loadPending && !loadError && loadItems.length === 0 && (
+                <p className="route-panel-load-empty">No saved routes yet</p>
+              )}
+              {loadItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="route-panel-load-row"
+                  onClick={() => {
+                    onSelectSaved(item);
+                    setLoadOpen(false);
+                  }}
+                >
+                  <span className="route-panel-load-name">{item.name}</span>
+                  <span className="route-panel-load-meta">
+                    {(item.distance / 1000).toFixed(1)} km ·{" "}
+                    {new Date(item.createdAt).toLocaleString(undefined, {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {savedReadMode && !routeModified && (
+        <p className="route-panel-saved-hint">Saved route — adjust sliders to reroute</p>
+      )}
+      {routeModified && <p className="route-panel-modified">Modified</p>}
+
       <div className="route-panel-sliders">
         <label className="route-panel-label">
           <span>Avoid traffic</span>
@@ -203,6 +312,7 @@ export function RoutePanel({
           <span>{(result.distance / 1000).toFixed(1)} km</span>
           <span>{formatDuration(result.duration)}</span>
           {result.ascent !== undefined && <span>↑ {result.ascent.toFixed(0)} m</span>}
+          {result.descent !== undefined && <span>↓ {result.descent.toFixed(0)} m</span>}
         </div>
       )}
 

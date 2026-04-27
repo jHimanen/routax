@@ -2,11 +2,35 @@
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
+import type { LatLng, RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlag } from "../hooks/useFeatureFlag";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute } from "../lib/api";
+
+function routeResultFromSaved(saved: SavedRoute): RouteResult {
+  return {
+    distance: saved.distance,
+    duration: saved.duration,
+    geometry: saved.geometry,
+    elevationProfile: saved.elevationProfile,
+    ascent: saved.ascent,
+    descent: saved.descent,
+  };
+}
+
+const EPS = 1e-7;
+function latLngEqual(a: LatLng, b: LatLng): boolean {
+  return Math.abs(a.lat - b.lat) < EPS && Math.abs(a.lng - b.lng) < EPS;
+}
+
+function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
+  return (
+    a.avoidTraffic === b.avoidTraffic &&
+    a.preferQuietSurfaces === b.preferQuietSurfaces &&
+    a.maxGradient === b.maxGradient
+  );
+}
 import { RoutePanel } from "./RoutePanel";
 
 const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
@@ -199,10 +223,55 @@ export function RouteMap(): React.JSX.Element {
   const [end, setEnd] = useState<LatLng | null>(null);
   const [profile, setProfile] = useState<RoutingProfile>(DEFAULT_PROFILE);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [resultOverride, setResultOverride] = useState<RouteResult | null>(null);
+  const [loadBaseline, setLoadBaseline] = useState<{
+    start: LatLng;
+    end: LatLng;
+    profile: RoutingProfile;
+  } | null>(null);
+  const [routeModified, setRouteModified] = useState(false);
 
-  const { result, isLoading, error } = useRoute(start, end, profile);
+  const { result, isLoading, error } = useRoute(start, end, profile, {
+    resultOverride,
+  });
   const flagSavedUi = useFeatureFlag("saved_routes_ui");
   const savedRoutesUi = flagSavedUi === true;
+
+  const applySavedRoute = useCallback((saved: SavedRoute) => {
+    const coords = saved.geometry.coordinates;
+    if (coords.length < 2) {
+      return;
+    }
+    const a = coords[0] as [number, number];
+    const b = coords[coords.length - 1] as [number, number];
+    const s: LatLng = { lat: a[1], lng: a[0] };
+    const e: LatLng = { lat: b[1], lng: b[0] };
+    setStart(s);
+    setEnd(e);
+    setProfile({ ...saved.profile });
+    setResultOverride(routeResultFromSaved(saved));
+    setLoadBaseline({ start: s, end: e, profile: { ...saved.profile } });
+    setRouteModified(false);
+  }, []);
+
+  useEffect(() => {
+    if (!resultOverride || !loadBaseline) {
+      return;
+    }
+    if (!start || !end) {
+      return;
+    }
+    if (
+      latLngEqual(start, loadBaseline.start) &&
+      latLngEqual(end, loadBaseline.end) &&
+      profileEqual(profile, loadBaseline.profile)
+    ) {
+      return;
+    }
+    setResultOverride(null);
+    setLoadBaseline(null);
+    setRouteModified(true);
+  }, [start, end, profile, resultOverride, loadBaseline]);
 
   const handleSave = useCallback(
     async (name: string) => {
@@ -227,6 +296,9 @@ export function RouteMap(): React.JSX.Element {
   const handleReset = useCallback(() => {
     setStart(null);
     setEnd(null);
+    setResultOverride(null);
+    setLoadBaseline(null);
+    setRouteModified(false);
   }, []);
 
   const handleMapClick = useCallback(
@@ -274,6 +346,9 @@ export function RouteMap(): React.JSX.Element {
         onReset={handleReset}
         savedRoutesUi={savedRoutesUi}
         onSave={handleSave}
+        onSelectSaved={applySavedRoute}
+        savedReadMode={resultOverride !== null}
+        routeModified={routeModified}
       />
     </div>
   );
