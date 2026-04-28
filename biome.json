@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignore": ["node_modules", ".next", "dist", "via-wiki", "*.tsbuildinfo"]
+    "ignore": ["node_modules", ".next", "dist", "routax-wiki", "*.tsbuildinfo"]
   },
   "formatter": {
     "enabled": true,

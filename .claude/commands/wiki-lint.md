@@ -1,6 +1,6 @@
-Run a lint pass on the via-wiki and produce a prioritized punch list.
+Run a lint pass on the routax-wiki and produce a prioritized punch list.
 
-Follow the lint procedure in `via-wiki/CLAUDE.md` section 5.4. Scan for:
+Follow the lint procedure in `routax-wiki/CLAUDE.md` section 5.4. Scan for:
 
 - **Contradictions** — all pages with `status: contested`.
 - **Stale claims** — older sources superseded by newer ones cited on the same page.
@@ -11,7 +11,7 @@ Follow the lint procedure in `via-wiki/CLAUDE.md` section 5.4. Scan for:
 
 Output a **prioritized punch list** grouped by severity (P0 = contradictions/contested, P1 = orphans/missing hubs, P2 = missing cross-refs, P3 = data gaps). Do not auto-fix — this pass is for the user to steer next moves.
 
-Append one entry to `via-wiki/log.md`:
+Append one entry to `routax-wiki/log.md`:
 ```
 ## [YYYY-MM-DD] lint | <1-line summary of findings>
 ```
