@@ -4,7 +4,13 @@ import type { SavedRoute } from "@routax/shared";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../../hooks/useFeatureFlags";
-import { deleteRoute, getRoute, listRoutes, updateRoute } from "../../lib/api";
+import {
+  deleteRoute,
+  downloadSavedRouteGpx,
+  getRoute,
+  listRoutes,
+  updateRoute,
+} from "../../lib/api";
 
 const PAGE_SIZE = 20;
 const NAME_MAX = 80;
@@ -43,6 +49,8 @@ export default function RoutesPage() {
   const [renameInput, setRenameInput] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameSaving, setRenameSaving] = useState(false);
+
+  const [gpxDownloadingId, setGpxDownloadingId] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<SavedRoute | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
@@ -113,6 +121,18 @@ export default function RoutesPage() {
     setRenamingId(null);
     setRenameInput("");
     setRenameError(null);
+  }
+
+  async function handleGpxDownload(id: string) {
+    setOpenKebabId(null);
+    setGpxDownloadingId(id);
+    try {
+      await downloadSavedRouteGpx(id);
+    } catch {
+      // no toast system yet
+    } finally {
+      setGpxDownloadingId(null);
+    }
   }
 
   function promptDelete(item: SavedRoute) {
@@ -299,6 +319,16 @@ export default function RoutesPage() {
                     <button type="button" role="menuitem" onClick={() => startRename(item)}>
                       Rename
                     </button>
+                    {flags.gpx_export && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={gpxDownloadingId === item.id}
+                        onClick={() => void handleGpxDownload(item.id)}
+                      >
+                        {gpxDownloadingId === item.id ? "Downloading…" : "Download GPX"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       role="menuitem"

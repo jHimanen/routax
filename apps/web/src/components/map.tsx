@@ -237,6 +237,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const { isReady, flags } = useFeatureFlags();
   const savedFlagOn = flags.saved_routes_ui === true;
   const savedRoutesUi = isReady && savedFlagOn;
+  const gpxExport = isReady && flags.gpx_export === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
   const { result, isLoading, error } = useRoute(start, end, profile, {
@@ -392,6 +393,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         savedReadMode={resultOverride !== null}
         routeModified={routeModified}
         deepLinkLoading={deepLinkLoading}
+        gpxExport={gpxExport}
       />
     </div>
   );
