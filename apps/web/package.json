@@ -6,7 +6,7 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check ./src",
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "start": "next start",
     "test": "echo \"no tests yet\" && exit 0"
   },
