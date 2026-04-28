@@ -93,6 +93,8 @@ Full rationale in `routax-wiki/product/decisions/`.
 ## Critical rules
 - Never commit or push directly to main
 - Always create a branch and open a PR
+- When planning a larger implementation, split the PR into multiple reasonable commits
+- When updating progress into the wiki, include as-built notes in respective task files where useful
 
 ## Product and engineering intent
 - Optimize for correctness, clarity, and shipping speed.
