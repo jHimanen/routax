@@ -5,9 +5,9 @@ import type { Container } from "./container.js";
 import { setupAuthContext } from "./plugins/auth-context.js";
 import { setupErrorHandler } from "./plugins/error-handler.js";
 import { registerFlagsRoute } from "./routes/flags.js";
+import { registerGpxEndpoints } from "./routes/gpx.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerRouteEndpoint } from "./routes/route.js";
-import { registerGpxEndpoints } from "./routes/gpx.js";
 import { registerRoutesEndpoints } from "./routes/routes.js";
 
 const DEFAULT_CORS_ORIGINS = [

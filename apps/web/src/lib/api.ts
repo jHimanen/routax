@@ -124,15 +124,11 @@ export async function downloadSavedRouteGpx(id: string): Promise<void> {
 }
 
 export async function downloadPreviewGpx(payload: GpxPreviewRequest): Promise<void> {
-  await triggerFileDownload(
-    `${getApiBaseUrl()}/gpx/preview`,
-    "routax-preview.gpx",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    },
-  );
+  await triggerFileDownload(`${getApiBaseUrl()}/gpx/preview`, "routax-preview.gpx", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getRoute(id: string, signal?: AbortSignal): Promise<SavedRoute | null> {

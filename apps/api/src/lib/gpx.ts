@@ -26,7 +26,13 @@ export function toSlug(text: string): string {
   return normalized || "route";
 }
 
-export function buildGpx({ name, createdAt, appLink, coordinates, elevationProfile }: GpxParams): string {
+export function buildGpx({
+  name,
+  createdAt,
+  appLink,
+  coordinates,
+  elevationProfile,
+}: GpxParams): string {
   const trkpts = coordinates
     .map(([lng, lat], i) => {
       const ele = (elevationProfile[i] ?? 0).toFixed(1);
@@ -34,9 +40,7 @@ export function buildGpx({ name, createdAt, appLink, coordinates, elevationProfi
     })
     .join("\n");
 
-  const linkXml = appLink
-    ? `\n    <link href="${appLink}"><text>Routax</text></link>`
-    : "";
+  const linkXml = appLink ? `\n    <link href="${appLink}"><text>Routax</text></link>` : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Routax"

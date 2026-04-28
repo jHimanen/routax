@@ -81,10 +81,7 @@ describe("buildGpx", () => {
   const baseParams = {
     name: "Test route",
     createdAt: "2026-04-28T10:00:00.000Z",
-    coordinates: [
-      [24.9384, 60.1699] as [number, number],
-      [24.9654, 60.2055] as [number, number],
-    ],
+    coordinates: [[24.9384, 60.1699] as [number, number], [24.9654, 60.2055] as [number, number]],
     elevationProfile: [16, 21],
   };
 
@@ -256,9 +253,10 @@ describe("GPX endpoints", () => {
     });
 
     it("POST /gpx/preview returns GPX without <link> and fires preview analytics", async () => {
-      await pool.query("DELETE FROM analytics_events WHERE user_id = $1 AND event = 'gpx_exported'", [
-        primaryUserId,
-      ]);
+      await pool.query(
+        "DELETE FROM analytics_events WHERE user_id = $1 AND event = 'gpx_exported'",
+        [primaryUserId],
+      );
 
       const app = makeAppForUser(primaryUserId);
       const res = await app.inject({
