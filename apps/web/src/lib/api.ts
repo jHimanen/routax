@@ -1,6 +1,7 @@
 import {
   type CreateRouteRequest,
   CreateRouteRequestSchema,
+  type GpxPreviewRequest,
   type ListRoutesResponse,
   ListRoutesResponseSchema,
   type RouteRequest,
@@ -10,6 +11,7 @@ import {
   SavedRouteSchema,
   UpdateRouteRequestSchema,
 } from "@routax/shared";
+import { triggerFileDownload } from "./download";
 
 const DEFAULT_API_BASE_URL = "/api";
 
@@ -113,6 +115,21 @@ export async function deleteRoute(id: string, signal?: AbortSignal): Promise<voi
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export async function downloadSavedRouteGpx(id: string): Promise<void> {
+  await triggerFileDownload(
+    `${getApiBaseUrl()}/routes/${encodeURIComponent(id)}/gpx`,
+    "routax-route.gpx",
+  );
+}
+
+export async function downloadPreviewGpx(payload: GpxPreviewRequest): Promise<void> {
+  await triggerFileDownload(`${getApiBaseUrl()}/gpx/preview`, "routax-preview.gpx", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function getRoute(id: string, signal?: AbortSignal): Promise<SavedRoute | null> {
   if (!UUID_RE.test(id)) {

@@ -46,7 +46,7 @@ export const RouteResultSchema = z.object({
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
 
-const RouteGeometrySchema = z
+export const RouteGeometrySchema = z
   .object({
     type: z.literal("LineString"),
     coordinates: z.array(z.tuple([z.number(), z.number()])),
@@ -96,7 +96,15 @@ export const ListRoutesResponseSchema = z.object({
   nextCursor: z.string().optional(),
 });
 
+export const GpxPreviewRequestSchema = z.object({
+  geometry: RouteGeometrySchema,
+  elevationProfile: z.array(z.number()),
+  distance: z.number(),
+  name: z.string().max(80).optional(),
+});
+
 export type SavedRoute = z.infer<typeof SavedRouteSchema>;
 export type CreateRouteRequest = z.infer<typeof CreateRouteRequestSchema>;
 export type UpdateRouteRequest = z.infer<typeof UpdateRouteRequestSchema>;
 export type ListRoutesResponse = z.infer<typeof ListRoutesResponseSchema>;
+export type GpxPreviewRequest = z.infer<typeof GpxPreviewRequestSchema>;

@@ -2,7 +2,7 @@
 
 import type { RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { listRoutes } from "../lib/api";
+import { downloadPreviewGpx, listRoutes } from "../lib/api";
 import { buildRouteUrl } from "../lib/url";
 
 interface RoutePanelProps {
@@ -24,6 +24,8 @@ interface RoutePanelProps {
   routeModified: boolean;
   /** Deep-link rehydration in progress — skeleton panel, no save/load. */
   deepLinkLoading: boolean;
+  /** When true, show the Download GPX button. */
+  gpxExport: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -66,6 +68,7 @@ export function RoutePanel({
   savedReadMode,
   routeModified,
   deepLinkLoading,
+  gpxExport,
 }: RoutePanelProps): React.JSX.Element {
   const hint = !start ? "Click the map to place start" : !end ? "Click the map to place end" : null;
   const nameId = useId();
@@ -74,6 +77,9 @@ export function RoutePanel({
   const [formName, setFormName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [savedUrl, setSavedUrl] = useState("");
+
+  const [gpxDownloading, setGpxDownloading] = useState(false);
+  const [gpxError, setGpxError] = useState<string | null>(null);
 
   const [loadOpen, setLoadOpen] = useState(false);
   const [loadItems, setLoadItems] = useState<SavedRoute[]>([]);
@@ -198,6 +204,24 @@ export function RoutePanel({
     }
   };
 
+  const handleGpxDownload = useCallback(async () => {
+    if (!result) return;
+    setGpxDownloading(true);
+    setGpxError(null);
+    try {
+      await downloadPreviewGpx({
+        geometry: result.geometry,
+        elevationProfile: result.elevationProfile,
+        distance: result.distance,
+        name: formName.trim() || undefined,
+      });
+    } catch (e) {
+      setGpxError(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setGpxDownloading(false);
+    }
+  }, [result, formName]);
+
   const showSaveForm = canUseSaved && result && (savePhase === "form" || savePhase === "saving");
   const showSaved = canUseSaved && savePhase === "saved" && savedUrl;
   const showSaveButton = canUseSaved && result && savePhase === "none" && !showSaved;
@@ -314,6 +338,24 @@ export function RoutePanel({
           {result.ascent !== undefined && <span>↑ {result.ascent.toFixed(0)} m</span>}
           {result.descent !== undefined && <span>↓ {result.descent.toFixed(0)} m</span>}
         </div>
+      )}
+
+      {gpxExport && result && (
+        <button
+          type="button"
+          className="route-panel-gpx"
+          onClick={() => {
+            void handleGpxDownload();
+          }}
+          disabled={gpxDownloading || isLoading}
+        >
+          {gpxDownloading ? "Downloading…" : "Download GPX"}
+        </button>
+      )}
+      {gpxError && (
+        <p className="route-panel-error" role="alert">
+          {gpxError}
+        </p>
       )}
 
       {isLoading && <p className="route-panel-status">Routing…</p>}
