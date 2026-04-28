@@ -1,4 +1,5 @@
 import { RouteMap } from "../components/map";
+import { RoutesNavLink } from "../components/RoutesNavLink";
 
 type SearchParams = { route?: string | string[] };
 
@@ -13,7 +14,10 @@ export default async function HomePage({
 
   return (
     <main className="app-shell">
-      <header className="app-header">Routax</header>
+      <header className="app-header">
+        Routax
+        <RoutesNavLink />
+      </header>
       <RouteMap initialRouteId={route} />
     </main>
   );
