@@ -399,3 +399,332 @@ body {
   color: #374151;
   cursor: pointer;
 }
+
+/* ── Routes page ─────────────────────────────────────────────────────────── */
+
+.routes-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  font-family: inherit;
+}
+
+.routes-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.routes-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.routes-back {
+  font-size: 13px;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.routes-back:hover {
+  color: #111827;
+}
+
+.routes-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.routes-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.routes-row:hover,
+.routes-row:focus-visible {
+  background: #f9fafb;
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.routes-row--renaming {
+  cursor: default;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.routes-row-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routes-row-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.routes-row-date {
+  min-width: 80px;
+  text-align: right;
+}
+
+.routes-kebab-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.routes-kebab-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.routes-kebab-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.routes-kebab-menu {
+  position: absolute;
+  right: 0;
+  top: 32px;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  overflow: hidden;
+}
+
+.routes-kebab-menu button {
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #111827;
+}
+
+.routes-kebab-menu button:hover {
+  background: #f9fafb;
+}
+
+.routes-kebab-delete {
+  color: #dc2626 !important;
+}
+
+/* Rename inline editor */
+
+.routes-rename-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.routes-rename-input {
+  padding: 4px 8px;
+  border: 1px solid #6366f1;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  max-width: 360px;
+}
+
+.routes-rename-error {
+  margin: 0;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.routes-rename-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.routes-rename-save,
+.routes-rename-cancel {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.routes-rename-save {
+  background: #6366f1;
+  color: #fff;
+}
+
+.routes-rename-save:disabled {
+  opacity: 0.6;
+}
+
+.routes-rename-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Skeleton */
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.routes-skeleton-row {
+  height: 52px;
+  border-radius: 8px;
+  background: #e5e7eb;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* Empty / coming soon */
+
+.routes-empty {
+  padding: 32px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.routes-empty a {
+  color: #6366f1;
+}
+
+.routes-coming-soon {
+  padding: 48px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+/* Load more */
+
+.routes-load-more {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.routes-load-more:hover {
+  background: #f9fafb;
+}
+
+.routes-load-more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Confirm delete dialog */
+
+.routes-confirm-dialog {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 15%);
+  max-width: 360px;
+  font-family: inherit;
+}
+
+.routes-confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 30%);
+}
+
+.routes-confirm-dialog p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.routes-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.routes-confirm-actions button {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.routes-confirm-actions button:first-child {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.routes-confirm-delete {
+  background: #dc2626;
+  color: #fff;
+}
+
+.routes-confirm-delete:disabled {
+  opacity: 0.6;
+}
+
+/* Nav link in planner header */
+
+.app-header-nav-link {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.app-header-nav-link:hover {
+  text-decoration: underline;
+}
