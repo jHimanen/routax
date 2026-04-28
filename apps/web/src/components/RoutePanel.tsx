@@ -89,7 +89,7 @@ export function RoutePanel({
     setLoadPending(true);
     setLoadError(null);
     const ac = new AbortController();
-    void listRoutes(5, ac.signal)
+    void listRoutes(5, undefined, ac.signal)
       .then((res) => {
         setLoadItems(res.items);
         setLoadPending(false);
