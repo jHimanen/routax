@@ -3,8 +3,8 @@
 import type { SavedRoute } from "@routax/shared";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { deleteRoute, getRoute, listRoutes, updateRoute } from "../../lib/api";
 import { useFeatureFlags } from "../../hooks/useFeatureFlags";
+import { deleteRoute, getRoute, listRoutes, updateRoute } from "../../lib/api";
 
 const PAGE_SIZE = 20;
 const NAME_MAX = 80;
@@ -160,7 +160,9 @@ export default function RoutesPage() {
     return (
       <div className="routes-page">
         <header className="routes-header">
-          <a href="/" className="routes-back">← Planner</a>
+          <a href="/" className="routes-back">
+            ← Planner
+          </a>
           <h1>My Routes</h1>
         </header>
         <div className="routes-table" aria-busy="true">
@@ -174,7 +176,9 @@ export default function RoutesPage() {
     return (
       <div className="routes-page">
         <header className="routes-header">
-          <a href="/" className="routes-back">← Planner</a>
+          <a href="/" className="routes-back">
+            ← Planner
+          </a>
           <h1>My Routes</h1>
         </header>
         <p className="routes-coming-soon">Coming soon</p>
@@ -185,17 +189,18 @@ export default function RoutesPage() {
   return (
     <div className="routes-page">
       <header className="routes-header">
-        <a href="/" className="routes-back">← Planner</a>
+        <a href="/" className="routes-back">
+          ← Planner
+        </a>
         <h1>My Routes</h1>
       </header>
 
-      <div className="routes-table" role="list">
+      <ul className="routes-table">
         {loading && <SkeletonRows />}
 
         {!loading && items.length === 0 && (
           <p className="routes-empty">
-            No saved routes yet.{" "}
-            <a href="/">Plan one →</a>
+            No saved routes yet. <a href="/">Plan one →</a>
           </p>
         )}
 
@@ -204,10 +209,9 @@ export default function RoutesPage() {
           const kebabOpen = openKebabId === item.id;
 
           return (
-            <div
+            <li
               key={item.id}
               className={`routes-row${isRenaming ? " routes-row--renaming" : ""}`}
-              role="listitem"
               tabIndex={isRenaming ? -1 : 0}
               onClick={() => {
                 if (!isRenaming) openRoute(item.id);
@@ -218,11 +222,14 @@ export default function RoutesPage() {
             >
               <div className="routes-row-name">
                 {isRenaming ? (
-                  <div className="routes-rename-editor" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="routes-rename-editor"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                     <input
                       className="routes-rename-input"
                       value={renameInput}
-                      autoFocus
                       maxLength={NAME_MAX}
                       disabled={renameSaving}
                       onChange={(e) => {
@@ -235,7 +242,9 @@ export default function RoutesPage() {
                       }}
                     />
                     {renameError && (
-                      <p className="routes-rename-error" role="alert">{renameError}</p>
+                      <p className="routes-rename-error" role="alert">
+                        {renameError}
+                      </p>
                     )}
                     <div className="routes-rename-actions">
                       <button
@@ -270,6 +279,7 @@ export default function RoutesPage() {
               <div
                 className="routes-kebab-wrapper"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
@@ -283,18 +293,10 @@ export default function RoutesPage() {
                 </button>
                 {kebabOpen && (
                   <div className="routes-kebab-menu" role="menu">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => openRoute(item.id)}
-                    >
+                    <button type="button" role="menuitem" onClick={() => openRoute(item.id)}>
                       Open
                     </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => startRename(item)}
-                    >
+                    <button type="button" role="menuitem" onClick={() => startRename(item)}>
                       Rename
                     </button>
                     <button
@@ -308,10 +310,10 @@ export default function RoutesPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {nextCursor && !loading && (
         <button
@@ -333,11 +335,7 @@ export default function RoutesPage() {
           Delete <strong>{deleteTarget?.name}</strong>? This can&apos;t be undone.
         </p>
         <div className="routes-confirm-actions">
-          <button
-            type="button"
-            onClick={() => setDeleteTarget(null)}
-            disabled={deleteInProgress}
-          >
+          <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleteInProgress}>
             Cancel
           </button>
           <button

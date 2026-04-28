@@ -1,5 +1,5 @@
-import { RouteMap } from "../components/map";
 import { RoutesNavLink } from "../components/RoutesNavLink";
+import { RouteMap } from "../components/map";
 
 type SearchParams = { route?: string | string[] };
 
