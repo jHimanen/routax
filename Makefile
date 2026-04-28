@@ -2,7 +2,7 @@ COMPOSE_FILE := infra/docker/docker-compose.local.yml
 COMPOSE_ENV_FILE := .env.local
 INFRA_SERVICES := postgres minio mailhog
 
-.PHONY: up up-build down logs reset dev download-osm smoke-test smoke
+.PHONY: up up-build down logs reset dev download-osm smoke-test smoke test test-integration
 
 up:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up -d
@@ -46,3 +46,34 @@ smoke-test:
 
 smoke:
 	bash scripts/smoke.sh
+
+# Run all checks. Requires the infra stack to be up (make up or make dev).
+# GraphHopper integration tests are skipped unless GRAPHHOPPER_URL is set.
+# To include them: make test-integration
+test:
+	@echo "→ Typecheck…"
+	pnpm -w typecheck
+	@echo "→ Lint…"
+	pnpm -w lint
+	@echo "→ Vitest (unit; GraphHopper integration skipped)…"
+	pnpm -w test
+	@echo "→ Smoke (GraphHopper via Caddy)…"
+	bash scripts/smoke.sh
+	@echo "→ Smoke-test (GraphHopper direct)…"
+	bash scripts/smoke-test-route.sh
+	@echo "✓ All checks passed."
+
+# Like 'make test' but enables GraphHopper integration tests.
+# Requires the full stack including GraphHopper (make up).
+test-integration:
+	@echo "→ Typecheck…"
+	pnpm -w typecheck
+	@echo "→ Lint…"
+	pnpm -w lint
+	@echo "→ Vitest (unit + GraphHopper integration)…"
+	GRAPHHOPPER_URL=http://localhost:8989 pnpm -w test
+	@echo "→ Smoke (GraphHopper via Caddy)…"
+	bash scripts/smoke.sh
+	@echo "→ Smoke-test (GraphHopper direct)…"
+	bash scripts/smoke-test-route.sh
+	@echo "✓ All checks passed (integration mode)."
