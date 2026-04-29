@@ -4,6 +4,7 @@ import type { RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
 import { buildRouteUrl } from "../lib/url";
+import { ElevationProfile } from "./ElevationProfile";
 
 interface RoutePanelProps {
   start: boolean;
@@ -26,6 +27,10 @@ interface RoutePanelProps {
   deepLinkLoading: boolean;
   /** When true, show the Download GPX button. */
   gpxExport: boolean;
+  /** When true, render the elevation profile chart. */
+  elevationProfileViz: boolean;
+  /** Called with the map coordinate under the hovered chart position, or null on leave. */
+  onElevationHover: (coord: [number, number] | null) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -69,6 +74,8 @@ export function RoutePanel({
   routeModified,
   deepLinkLoading,
   gpxExport,
+  elevationProfileViz,
+  onElevationHover,
 }: RoutePanelProps): React.JSX.Element {
   const hint = !start ? "Click the map to place start" : !end ? "Click the map to place end" : null;
   const nameId = useId();
@@ -338,6 +345,14 @@ export function RoutePanel({
           {result.ascent !== undefined && <span>↑ {result.ascent.toFixed(0)} m</span>}
           {result.descent !== undefined && <span>↓ {result.descent.toFixed(0)} m</span>}
         </div>
+      )}
+
+      {elevationProfileViz && result && result.elevationProfile.length >= 2 && (
+        <ElevationProfile
+          elevationProfile={result.elevationProfile}
+          geometry={result.geometry}
+          onHoverCoord={onElevationHover}
+        />
       )}
 
       {gpxExport && result && (
