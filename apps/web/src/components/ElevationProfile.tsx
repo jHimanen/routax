@@ -27,6 +27,7 @@ export function ElevationProfile({
   const rafRef = useRef<number | null>(null);
   const touchClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset hover when route's elevation data changes
   useEffect(() => {
     setHoverIdx(null);
     onHoverCoord(null);
@@ -98,10 +99,11 @@ export function ElevationProfile({
   return (
     <svg
       ref={svgRef}
+      role="img"
+      aria-label="Elevation profile"
       className="elevation-profile"
       viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
       preserveAspectRatio="none"
-      aria-label="Elevation profile"
     >
       {/* Area fill */}
       <path

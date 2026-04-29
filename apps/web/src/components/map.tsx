@@ -51,6 +51,7 @@ interface RoutaxMapProps {
   onMapClick: (lngLat: LatLng) => void;
   onMapLoaded: () => void;
   mapLoaded: boolean;
+  hoverCoord: [number, number] | null;
 }
 
 function RoutaxMap({
@@ -60,6 +61,7 @@ function RoutaxMap({
   onMapClick,
   onMapLoaded,
   mapLoaded,
+  hoverCoord,
 }: RoutaxMapProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -193,6 +195,43 @@ function RoutaxMap({
     }
   }, [routeGeoJSON, mapLoaded]);
 
+  // Elevation hover marker
+  const HOVER_SOURCE = "routax-hover";
+  const HOVER_LAYER = "routax-hover-dot";
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (hoverCoord) {
+      const geoJSON: GeoJSON.Feature<GeoJSON.Point> = {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Point", coordinates: hoverCoord },
+      };
+      const existing = map.getSource(HOVER_SOURCE);
+      if (existing) {
+        (existing as maplibregl.GeoJSONSource).setData(geoJSON);
+      } else {
+        map.addSource(HOVER_SOURCE, { type: "geojson", data: geoJSON });
+        map.addLayer({
+          id: HOVER_LAYER,
+          type: "circle",
+          source: HOVER_SOURCE,
+          paint: {
+            "circle-radius": 6,
+            "circle-color": "#ffffff",
+            "circle-stroke-color": "#3b82f6",
+            "circle-stroke-width": 2,
+          },
+        });
+      }
+    } else {
+      if (map.getLayer(HOVER_LAYER)) map.removeLayer(HOVER_LAYER);
+      if (map.getSource(HOVER_SOURCE)) map.removeSource(HOVER_SOURCE);
+    }
+  }, [hoverCoord, mapLoaded]);
+
   if (!styleUrl) {
     return (
       <section className="map-root">
@@ -234,10 +273,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     () => !initialRouteId || initialRouteId.trim() === "",
   );
 
+  const [hoverCoord, setHoverCoord] = useState<[number, number] | null>(null);
+
   const { isReady, flags } = useFeatureFlags();
   const savedFlagOn = flags.saved_routes_ui === true;
   const savedRoutesUi = isReady && savedFlagOn;
   const gpxExport = isReady && flags.gpx_export === true;
+  const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
   const { result, isLoading, error } = useRoute(start, end, profile, {
@@ -377,6 +419,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onMapClick={handleMapClick}
         onMapLoaded={() => setMapLoaded(true)}
         mapLoaded={mapLoaded}
+        hoverCoord={hoverCoord}
       />
       <RoutePanel
         start={start !== null}
@@ -394,6 +437,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         routeModified={routeModified}
         deepLinkLoading={deepLinkLoading}
         gpxExport={gpxExport}
+        elevationProfileViz={elevationProfileViz}
+        onElevationHover={setHoverCoord}
       />
     </div>
   );

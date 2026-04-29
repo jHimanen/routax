@@ -16,7 +16,9 @@ describe("cumulativeDistanceKm", () => {
     const cum = cumulativeDistanceKm(COORDS);
     expect(cum[0]).toBe(0);
     for (let i = 1; i < cum.length; i++) {
-      expect(cum[i]).toBeGreaterThan(cum[i - 1]);
+      const prev = cum[i - 1] ?? 0;
+      const curr = cum[i] ?? 0;
+      expect(curr).toBeGreaterThan(prev);
     }
     expect(cum).toHaveLength(COORDS.length);
   });
@@ -48,9 +50,9 @@ describe("buildElevationPathD", () => {
       .replace(/M|L/g, " ")
       .trim()
       .split(" ")
-      .map((pt) => Number(pt.split(",")[1]));
+      .map((pt) => Number(pt.split(",")[1] ?? "0"));
     // 2 m in a 50 m floor range ≈ 17% of chart height — well under 50%.
-    expect(Math.abs(ys[0] - ys[1])).toBeLessThan(30);
+    expect(Math.abs((ys[0] ?? 0) - (ys[1] ?? 0))).toBeLessThan(30);
   });
 });
 
@@ -70,7 +72,7 @@ describe("indexFromX", () => {
 
   it("returns nearest index at midpoint", () => {
     const cum = cumulativeDistanceKm(COORDS);
-    const total = cum[cum.length - 1];
+    const _total = cum[cum.length - 1];
     // x at exactly 50% of width → closest point to totalDist/2
     const midX = 100;
     const idx = indexFromX(midX, makeRect(0, 200), cum);
