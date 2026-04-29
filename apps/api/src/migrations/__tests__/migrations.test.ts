@@ -59,7 +59,7 @@ describe("migration round-trip", () => {
     expect(await tableSet(pool)).toEqual(new Set());
 
     // Re-apply all
-    await runner({ ...opts, direction: "up", count: Infinity });
+    await runner({ ...opts, direction: "up", count: Number.POSITIVE_INFINITY });
     expect(await tableSet(pool)).toEqual(new Set(CORE_TABLES));
   }, 60_000);
 });

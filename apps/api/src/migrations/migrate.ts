@@ -17,7 +17,7 @@ export async function runMigrations(): Promise<void> {
     migrationsTable: "pgmigrations",
     dir: path.join(__dirname, "../../migrations"),
     direction: "up",
-    count: Infinity,
+    count: Number.POSITIVE_INFINITY,
     log: console.log,
   });
 }
