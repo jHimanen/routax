@@ -19,5 +19,5 @@ exports.up = (pgm) => {
 /** @type {import('node-pg-migrate').MigrationBuilder} */
 exports.down = (pgm) => {
   // WARNING: drops all flag data including any flags added after initial seed.
-  pgm.sql(`DROP TABLE IF EXISTS flags;`);
+  pgm.sql("DROP TABLE IF EXISTS flags;");
 };

@@ -29,5 +29,5 @@ exports.up = (pgm) => {
 /** @type {import('node-pg-migrate').MigrationBuilder} */
 exports.down = (pgm) => {
   // Leave uuid-ossp extension; other tables (analytics_events) may depend on it.
-  pgm.sql(`DROP TABLE IF EXISTS routes;`);
+  pgm.sql("DROP TABLE IF EXISTS routes;");
 };
