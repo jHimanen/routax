@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../../app.js";
 import { createContainer } from "../../container.js";
-import { runMigrations } from "../../migrations/runner.js";
+import { runMigrations } from "../../migrations/migrate.js";
 
 const pool = new Pool({
   host: process.env.POSTGRES_HOST ?? "localhost",
