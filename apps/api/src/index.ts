@@ -2,7 +2,7 @@ import * as path from "node:path";
 import dotenv from "dotenv";
 import { buildApp } from "./app.js";
 import { createContainer, createPool } from "./container.js";
-import { runMigrations } from "./migrations/runner.js";
+import { runMigrations } from "./migrations/migrate.js";
 import { initSentry } from "./sentry.js";
 
 function loadLocalEnv(): void {
@@ -24,7 +24,7 @@ const start = async (): Promise<void> => {
   initSentry();
   const pool = createPool();
 
-  await runMigrations(pool);
+  await runMigrations();
 
   const container = createContainer(pool);
   const app = buildApp(container);
