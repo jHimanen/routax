@@ -12,7 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "flags:set": "tsx scripts/flags.ts set",
-    "flags:list": "tsx scripts/flags.ts list"
+    "flags:list": "tsx scripts/flags.ts list",
+    "db:migrate": "node-pg-migrate up",
+    "db:migrate:down": "node-pg-migrate down 1",
+    "db:migrate:create": "node-pg-migrate create",
+    "db:migrate:status": "node-pg-migrate status"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
@@ -22,6 +26,7 @@
     "@sentry/node": "^10.50.0",
     "fastify": "^5.0.0",
     "fastify-type-provider-zod": "^4.0.0",
+    "node-pg-migrate": "^8.0.4",
     "nodemailer": "^6.0.0",
     "pg": "^8.0.0"
   },
