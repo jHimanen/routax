@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-04-01T00:00:00.000Z",
+  "_note": "Placeholder fixture with straight-line geometry. Regenerate with: pnpm --filter @routax/api db:seed -- --write-fixtures",
+  "routes": [
+    {
+      "slug": "tampere-jyvaskyla",
+      "name": "Tampere → Jyväskylä",
+      "result": {
+        "distance": 155000,
+        "duration": 21600,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[23.76, 61.498], [25.747, 62.243]]
+        },
+        "elevationProfile": [130, 145],
+        "ascent": 850,
+        "descent": 780
+      }
+    },
+    {
+      "slug": "helsinki-round-trip",
+      "name": "Helsinki → Espoo round-trip",
+      "result": {
+        "distance": 40000,
+        "duration": 5400,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.938, 60.169], [24.656, 60.205]]
+        },
+        "elevationProfile": [20, 35],
+        "ascent": 210,
+        "descent": 210
+      }
+    },
+    {
+      "slug": "lappeenranta-joensuu",
+      "name": "Lappeenranta → Joensuu",
+      "result": {
+        "distance": 170000,
+        "duration": 25200,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[28.187, 61.058], [29.763, 62.601]]
+        },
+        "elevationProfile": [80, 110],
+        "ascent": 720,
+        "descent": 690
+      }
+    },
+    {
+      "slug": "tampere-city-loop",
+      "name": "Tampere city loop",
+      "result": {
+        "distance": 15000,
+        "duration": 2700,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[23.757, 61.497], [23.8, 61.51]]
+        },
+        "elevationProfile": [95, 100],
+        "ascent": 85,
+        "descent": 85
+      }
+    },
+    {
+      "slug": "tampere-hameenlinna",
+      "name": "Tampere → Hämeenlinna",
+      "result": {
+        "distance": 78000,
+        "duration": 10800,
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[23.757, 61.497], [24.465, 61.001]]
+        },
+        "elevationProfile": [120, 130],
+        "ascent": 480,
+        "descent": 460
+      }
+    }
+  ]
+}
