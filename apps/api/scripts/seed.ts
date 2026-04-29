@@ -1,11 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 import dotenv from "dotenv";
 import { runner } from "node-pg-migrate";
 import type { Pool } from "pg";
 import { v5 as uuidv5 } from "uuid";
-import { createContainer, createPool } from "../src/container.js";
 import type { Container } from "../src/container.js";
+import { createContainer, createPool } from "../src/container.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -348,7 +349,10 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only run when executed directly — not when imported by tests.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
