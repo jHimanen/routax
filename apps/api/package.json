@@ -13,8 +13,8 @@
     "test:watch": "vitest",
     "flags:set": "tsx scripts/flags.ts set",
     "flags:list": "tsx scripts/flags.ts list",
-    "db:migrate": "node-pg-migrate up",
-    "db:migrate:down": "node-pg-migrate down 1",
+    "db:migrate": "node scripts/migrate.cjs up",
+    "db:migrate:down": "node scripts/migrate.cjs down 1",
     "db:migrate:create": "node-pg-migrate create",
     "db:migrate:status": "node-pg-migrate status"
   },
