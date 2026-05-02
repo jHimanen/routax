@@ -1,4 +1,4 @@
-import type { RouteRequest, RouteResult, RoutingProvider } from "@routax/shared";
+import type { RouteRequest, RouteResult, RoutingProvider, SurfaceClass } from "@routax/shared";
 
 interface GhResponse {
   paths: Array<{
@@ -10,7 +10,64 @@ interface GhResponse {
       type: "LineString";
       coordinates: Array<[number, number, number]>;
     };
+    details?: {
+      surface?: Array<[number, number, string]>;
+    };
   }>;
+}
+
+export function normalizeSurface(raw: string): SurfaceClass {
+  switch (raw) {
+    case "asphalt":
+    case "concrete":
+    case "paving_stones":
+      return "asphalt";
+    case "sett":
+    case "cobblestone":
+    case "bricks":
+    case "concrete:plates":
+      return "paved_rough";
+    case "compacted":
+    case "fine_gravel":
+    case "pebblestone":
+      return "compacted";
+    case "gravel":
+    case "dirt":
+    case "ground":
+    case "earth":
+      return "gravel";
+    case "sand":
+    case "mud":
+      return "sand";
+    case "wood":
+    case "metal_grid":
+      return "wood";
+    case "unpaved":
+      return "unpaved";
+    default:
+      return "unknown";
+  }
+}
+
+export function parseSurfaceDetails(
+  ranges: Array<[number, number, string]>,
+  edgeCount: number,
+): SurfaceClass[] {
+  const surfaces: SurfaceClass[] = Array(edgeCount).fill("unknown" as SurfaceClass);
+  for (const [from, to, raw] of ranges) {
+    for (let i = from; i < to; i++) {
+      surfaces[i] = normalizeSurface(raw);
+    }
+  }
+  // Only validate coverage when GH actually returned ranges.
+  // Empty ranges = all-untagged route, which is legitimate for remote forest tracks.
+  if (ranges.length > 0) {
+    const covered = ranges.reduce((acc, [from, to]) => acc + (to - from), 0);
+    if (covered !== edgeCount) {
+      throw new Error(`GH surface ranges cover ${covered} edges, expected ${edgeCount}`);
+    }
+  }
+  return surfaces;
 }
 
 function buildCustomModel(profile: RouteRequest["profile"]): unknown {
@@ -59,6 +116,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       points_encoded: false,
       "ch.disable": true,
       custom_model: buildCustomModel(request.profile),
+      details: ["surface"],
     };
 
     const response = await fetch(`${this.baseUrl}/route`, {
@@ -89,6 +147,9 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       );
     }
 
+    const surfaceRanges = path.details?.surface ?? [];
+    const surfaces = parseSurfaceDetails(surfaceRanges, coordinates.length - 1);
+
     return {
       distance: path.distance,
       duration: Math.round(path.time / 1000),
@@ -96,6 +157,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       elevationProfile,
       ascent: path.ascend,
       descent: path.descend,
+      surfaces,
     };
   }
 }

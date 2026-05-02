@@ -370,6 +370,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         ascent: Math.round(result.ascent),
         descent: Math.round(result.descent),
         elevationProfile: result.elevationProfile,
+        surfaceProfile: result.surfaces,
       });
       return created.id;
     },
