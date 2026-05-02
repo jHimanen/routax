@@ -6,7 +6,7 @@ import type { Container } from "../../container.js";
 const VALID_BODY = {
   start: { lat: 60.1699, lng: 25.0097 },
   end: { lat: 60.1791, lng: 24.9506 },
-  profile: { avoidTraffic: 0.5, preferQuietSurfaces: 0.5, maxGradient: 10 },
+  preset: "fastest_direct",
 };
 
 const STUB_RESULT: RouteResult = {
@@ -107,7 +107,7 @@ describe("POST /route", () => {
     const res = await app.inject({
       method: "POST",
       url: "/route",
-      payload: { start: { lat: 60.1699, lng: 25.0097 } }, // missing end + profile
+      payload: { start: { lat: 60.1699, lng: 25.0097 } }, // missing end + preset
     });
 
     expect(res.statusCode).toBe(400);
