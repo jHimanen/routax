@@ -276,7 +276,12 @@ describe("GraphhopperRoutingProvider", () => {
     });
 
     it("each preset produces a distinct serialisation", () => {
-      const presets = ["fastest_direct", "quiet_country_roads", "maximum_climbing", "avoid_gravel"] as const;
+      const presets = [
+        "fastest_direct",
+        "quiet_country_roads",
+        "maximum_climbing",
+        "avoid_gravel",
+      ] as const;
       const models = presets.map((p) => JSON.stringify(buildCustomModel(baseProfile, p)));
       const unique = new Set(models);
       expect(unique.size).toBe(presets.length);

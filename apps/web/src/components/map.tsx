@@ -3,8 +3,8 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
-  PRESET_DEFAULTS,
   type LatLng,
+  PRESET_DEFAULTS,
   type RouteProfilePreset,
   type RouteResult,
   type RoutingProfile,
@@ -361,7 +361,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setResultOverride(null);
     setLoadBaseline(null);
     setRouteModified(true);
-  }, [start, end, profile, resultOverride, loadBaseline]);
+  }, [start, end, preset, profile, resultOverride, loadBaseline]);
 
   const handleSave = useCallback(
     async (name: string) => {

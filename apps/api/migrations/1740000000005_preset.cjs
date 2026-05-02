@@ -1,8 +1,6 @@
 /** @type {import('node-pg-migrate').MigrationBuilder} */
 exports.up = (pgm) => {
-  pgm.sql(
-    `ALTER TABLE routes ADD COLUMN preset TEXT NOT NULL DEFAULT 'fastest_direct';`,
-  );
+  pgm.sql(`ALTER TABLE routes ADD COLUMN preset TEXT NOT NULL DEFAULT 'fastest_direct';`);
 };
 
 /** @type {import('node-pg-migrate').MigrationBuilder} */

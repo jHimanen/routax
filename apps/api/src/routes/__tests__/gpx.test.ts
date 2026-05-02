@@ -19,6 +19,7 @@ const alternateUserId = "gpx-stub-user-2" as UserId;
 
 const routePayload: CreateRouteRequest = {
   name: "Helsinki–Turku brevet",
+  preset: "quiet_country_roads",
   profile: { avoidTraffic: 0.2, preferQuietSurfaces: 0.8, maxGradient: 9 },
   geometry: {
     type: "LineString",

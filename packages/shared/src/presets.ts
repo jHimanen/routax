@@ -7,22 +7,21 @@ export const PRESET_DEFAULTS: Record<RouteProfilePreset, RoutingProfile> = {
   avoid_gravel: { avoidTraffic: 0.2, preferQuietSurfaces: 0.0, maxGradient: 12 },
 };
 
-export const PRESET_METADATA: Record<RouteProfilePreset, { label: string; description: string }> =
-  {
-    fastest_direct: {
-      label: "Fastest direct",
-      description: "Most direct route on main roads",
-    },
-    quiet_country_roads: {
-      label: "Quiet country roads",
-      description: "Avoids traffic, prefers cycling paths and small lanes",
-    },
-    maximum_climbing: {
-      label: "Maximum climbing",
-      description: "Seeks hilly terrain and off-road tracks",
-    },
-    avoid_gravel: {
-      label: "Avoid gravel",
-      description: "Stays on paved surfaces where possible",
-    },
-  };
+export const PRESET_METADATA: Record<RouteProfilePreset, { label: string; description: string }> = {
+  fastest_direct: {
+    label: "Fastest direct",
+    description: "Most direct route on main roads",
+  },
+  quiet_country_roads: {
+    label: "Quiet country roads",
+    description: "Avoids traffic, prefers cycling paths and small lanes",
+  },
+  maximum_climbing: {
+    label: "Maximum climbing",
+    description: "Seeks hilly terrain and off-road tracks",
+  },
+  avoid_gravel: {
+    label: "Avoid gravel",
+    description: "Stays on paved surfaces where possible",
+  },
+};

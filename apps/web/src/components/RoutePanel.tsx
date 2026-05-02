@@ -310,7 +310,9 @@ export function RoutePanel({
       )}
 
       {savedReadMode && !routeModified && (
-        <p className="route-panel-saved-hint">Saved route — change preset or adjust sliders to reroute</p>
+        <p className="route-panel-saved-hint">
+          Saved route — change preset or adjust sliders to reroute
+        </p>
       )}
       {routeModified && <p className="route-panel-modified">Modified</p>}
 
@@ -370,9 +372,7 @@ export function RoutePanel({
               step="1"
               value={profile.maxGradient}
               disabled={deepLinkLoading}
-              onChange={(e) =>
-                onProfileChange({ ...profile, maxGradient: Number(e.target.value) })
-              }
+              onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
             />
           </label>
         </div>
