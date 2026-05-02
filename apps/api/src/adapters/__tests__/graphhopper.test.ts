@@ -1,14 +1,18 @@
+import type { RouteResult } from "@routax/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GraphhopperRoutingProvider,
   buildCustomModel,
   normalizeSurface,
   parseSurfaceDetails,
+  stitchRouteLegs,
 } from "../GraphhopperRoutingProvider.js";
 
 const BASE_REQUEST = {
-  start: { lat: 60.1699, lng: 25.0097 },
-  end: { lat: 60.1791, lng: 24.9506 },
+  waypoints: [
+    { lat: 60.1699, lng: 25.0097 },
+    { lat: 60.1791, lng: 24.9506 },
+  ],
   preset: "fastest_direct" as const,
 };
 
@@ -43,8 +47,10 @@ describe("GraphhopperRoutingProvider", () => {
       async () => {
         const provider = new GraphhopperRoutingProvider();
         const result = await provider.planRoute({
-          start: { lat: 61.498, lng: 23.76 },
-          end: { lat: 62.243, lng: 25.747 },
+          waypoints: [
+            { lat: 61.498, lng: 23.76 },
+            { lat: 62.243, lng: 25.747 },
+          ],
           preset: "maximum_climbing",
         });
 
@@ -135,14 +141,14 @@ describe("GraphhopperRoutingProvider", () => {
       } as any);
 
       const provider = new GraphhopperRoutingProvider();
-      await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("GraphHopper returned 400");
+      await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("Leg 1→2 is unroutable");
     });
 
     it("throws when GraphHopper returns no paths", async () => {
       mockFetchOk([]);
 
       const provider = new GraphhopperRoutingProvider();
-      await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("no paths");
+      await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("Leg 1→2 is unroutable");
     });
 
     it("throws on elevation/coordinate length mismatch", async () => {
@@ -166,6 +172,127 @@ describe("GraphhopperRoutingProvider", () => {
 
       const provider = new BrokenProvider();
       await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("mismatch");
+    });
+
+    it("wraps per-leg failures with segment context", async () => {
+      vi.spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            paths: [
+              {
+                distance: 1000,
+                time: 200000,
+                ascend: 5,
+                descend: 5,
+                points: {
+                  type: "LineString",
+                  coordinates: [
+                    [25.0, 60.0, 10],
+                    [24.9, 60.1, 10],
+                  ],
+                },
+              },
+            ],
+          }),
+          // biome-ignore lint/suspicious/noExplicitAny: test mock
+        } as any)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          text: async () => "Point not found",
+          // biome-ignore lint/suspicious/noExplicitAny: test mock
+        } as any);
+
+      const provider = new GraphhopperRoutingProvider();
+      await expect(
+        provider.planRoute({
+          waypoints: [
+            { lat: 60.0, lng: 25.0 },
+            { lat: 60.1, lng: 24.9 },
+            { lat: 60.2, lng: 24.8 },
+          ],
+          preset: "fastest_direct",
+        }),
+      ).rejects.toThrow("Leg 2→3 is unroutable");
+    });
+  });
+
+  describe("stitchRouteLegs", () => {
+    const legA: RouteResult = {
+      distance: 1000,
+      duration: 200,
+      ascent: 10,
+      descent: 5,
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [25.0, 60.0],
+          [24.9, 60.1],
+          [24.8, 60.2],
+        ],
+      },
+      elevationProfile: [10, 20, 15],
+      surfaces: ["asphalt", "gravel"],
+    };
+
+    const legB: RouteResult = {
+      distance: 500,
+      duration: 100,
+      ascent: 3,
+      descent: 8,
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [24.8, 60.2],
+          [24.7, 60.3],
+          [24.6, 60.4],
+        ],
+      },
+      elevationProfile: [15, 22, 18],
+      surfaces: ["compacted", "asphalt"],
+    };
+
+    it("returns a single leg unchanged", () => {
+      expect(stitchRouteLegs([legA])).toBe(legA);
+    });
+
+    it("deduplicates the junction coordinate when stitching two legs", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      // legA has 3 coords, legB has 3 coords, junction deduped → 5 total
+      expect(stitched.geometry.coordinates).toHaveLength(5);
+      expect(stitched.geometry.coordinates[0]).toEqual([25.0, 60.0]);
+      expect(stitched.geometry.coordinates[4]).toEqual([24.6, 60.4]);
+    });
+
+    it("deduplicates elevation at the junction", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      expect(stitched.elevationProfile).toHaveLength(5);
+      expect(stitched.elevationProfile[2]).toBe(15); // junction point, kept from legA
+    });
+
+    it("concatenates surfaces without deduplication (per-edge, not per-vertex)", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      // 2 surfaces per leg → 4 total
+      expect(stitched.surfaces).toHaveLength(4);
+      expect(stitched.surfaces).toEqual(["asphalt", "gravel", "compacted", "asphalt"]);
+    });
+
+    it("sums distance, duration, ascent, descent across legs", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      expect(stitched.distance).toBe(1500);
+      expect(stitched.duration).toBe(300);
+      expect(stitched.ascent).toBe(13);
+      expect(stitched.descent).toBe(13);
+    });
+
+    it("maintains surfaces.length === coordinates.length - 1 invariant", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      expect(stitched.surfaces.length).toBe(stitched.geometry.coordinates.length - 1);
+    });
+
+    it("throws on empty legs array", () => {
+      expect(() => stitchRouteLegs([])).toThrow("No legs to stitch");
     });
   });
 

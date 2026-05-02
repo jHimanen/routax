@@ -152,6 +152,48 @@ function resolveProfile(request: RouteRequest): {
   };
 }
 
+export function stitchRouteLegs(legs: RouteResult[]): RouteResult {
+  if (legs.length === 0) throw new Error("No legs to stitch");
+
+  const first = legs[0];
+  if (!first) throw new Error("No legs to stitch");
+  if (legs.length === 1) return first;
+
+  const coordinates: [number, number][] = [...first.geometry.coordinates];
+  const elevationProfile: number[] = [...first.elevationProfile];
+  const surfaces: SurfaceClass[] = [...first.surfaces];
+  let distance = first.distance;
+  let duration = first.duration;
+  let ascent = first.ascent;
+  let descent = first.descent;
+
+  for (const leg of legs.slice(1)) {
+    const legCoords = leg.geometry.coordinates;
+    const legElev = leg.elevationProfile;
+
+    // Skip the first coord/elevation — it's the duplicate junction point shared with the previous leg.
+    coordinates.push(...(legCoords.slice(1) as [number, number][]));
+    elevationProfile.push(...legElev.slice(1));
+
+    // Surfaces are per-edge (length = coords - 1); no deduplication needed.
+    surfaces.push(...leg.surfaces);
+    distance += leg.distance;
+    duration += leg.duration;
+    ascent += leg.ascent;
+    descent += leg.descent;
+  }
+
+  return {
+    distance,
+    duration,
+    geometry: { type: "LineString", coordinates },
+    elevationProfile,
+    ascent,
+    descent,
+    surfaces,
+  };
+}
+
 export class GraphhopperRoutingProvider implements RoutingProvider {
   private readonly baseUrl: string;
 
@@ -159,19 +201,22 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
     this.baseUrl = process.env.GRAPHHOPPER_URL ?? "http://localhost:8989";
   }
 
-  async planRoute(request: RouteRequest): Promise<RouteResult> {
-    const profile = resolveProfile(request);
-
+  private async planLeg(
+    from: { lat: number; lng: number },
+    to: { lat: number; lng: number },
+    profile: { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number },
+    preset: RouteProfilePreset,
+  ): Promise<RouteResult> {
     const body = {
       points: [
-        [request.start.lng, request.start.lat],
-        [request.end.lng, request.end.lat],
+        [from.lng, from.lat],
+        [to.lng, to.lat],
       ],
       profile: "bike",
       elevation: true,
       points_encoded: false,
       "ch.disable": true,
-      custom_model: buildCustomModel(profile, request.preset),
+      custom_model: buildCustomModel(profile, preset),
       details: ["surface"],
     };
 
@@ -215,5 +260,23 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       descent: path.descend,
       surfaces,
     };
+  }
+
+  async planRoute(request: RouteRequest): Promise<RouteResult> {
+    const profile = resolveProfile(request);
+    const pts = request.waypoints;
+
+    const legResults = await Promise.all(
+      pts.slice(0, -1).map((from, i) => {
+        const to = pts[i + 1];
+        if (!to) throw new Error(`Missing waypoint at index ${i + 1}`);
+        return this.planLeg(from, to, profile, request.preset).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`Leg ${i + 1}→${i + 2} is unroutable: ${msg}`);
+        });
+      }),
+    );
+
+    return stitchRouteLegs(legResults);
   }
 }
