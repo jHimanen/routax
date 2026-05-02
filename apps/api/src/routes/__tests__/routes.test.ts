@@ -18,6 +18,7 @@ const alternateUserId = "stub-user-2" as UserId;
 
 const payload: CreateRouteRequest = {
   name: "Brevet test route",
+  preset: "quiet_country_roads",
   profile: { avoidTraffic: 0.2, preferQuietSurfaces: 0.8, maxGradient: 9 },
   geometry: {
     type: "LineString",

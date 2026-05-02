@@ -1,4 +1,4 @@
-import type { LatLng, RouteResult, RoutingProfile } from "@routax/shared";
+import type { LatLng, RouteProfilePreset, RouteResult, RoutingProfile } from "@routax/shared";
 import { useEffect, useRef, useState } from "react";
 import { postRoute } from "../lib/api";
 
@@ -16,6 +16,7 @@ export interface UseRouteOptions {
 export function useRoute(
   start: LatLng | null,
   end: LatLng | null,
+  preset: RouteProfilePreset,
   profile: RoutingProfile,
   options: UseRouteOptions = { resultOverride: null },
 ): UseRouteResult {
@@ -59,7 +60,10 @@ export function useRoute(
       setError(null);
 
       try {
-        const data = await postRoute({ start, end, profile }, controller.signal);
+        const data = await postRoute(
+          { start, end, preset, advancedOverrides: profile },
+          controller.signal,
+        );
         setFetched(data);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -77,7 +81,7 @@ export function useRoute(
         clearTimeout(timerRef.current);
       }
     };
-  }, [start, end, profile, resultOverride]);
+  }, [start, end, preset, profile, resultOverride]);
 
   const result = resultOverride ?? fetched;
   if (resultOverride) {

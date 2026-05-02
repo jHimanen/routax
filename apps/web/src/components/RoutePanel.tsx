@@ -1,14 +1,30 @@
 "use client";
 
-import type { RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
+import {
+  PRESET_METADATA,
+  type RouteProfilePreset,
+  type RouteResult,
+  type RoutingProfile,
+  type SavedRoute,
+} from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
 import { buildRouteUrl } from "../lib/url";
 import { ElevationProfile } from "./ElevationProfile";
 
+const PRESET_ORDER: RouteProfilePreset[] = [
+  "fastest_direct",
+  "quiet_country_roads",
+  "maximum_climbing",
+  "avoid_gravel",
+];
+
 interface RoutePanelProps {
   start: boolean;
   end: boolean;
+  preset: RouteProfilePreset;
+  onPresetChange: (p: RouteProfilePreset) => void;
+  isCustom: boolean;
   profile: RoutingProfile;
   onProfileChange: (p: RoutingProfile) => void;
   result: RouteResult | null;
@@ -61,6 +77,9 @@ type SavePhase = "none" | "form" | "saving" | "saved";
 export function RoutePanel({
   start,
   end,
+  preset,
+  onPresetChange,
+  isCustom,
   profile,
   onProfileChange,
   result,
@@ -291,50 +310,73 @@ export function RoutePanel({
       )}
 
       {savedReadMode && !routeModified && (
-        <p className="route-panel-saved-hint">Saved route — adjust sliders to reroute</p>
+        <p className="route-panel-saved-hint">
+          Saved route — change preset or adjust sliders to reroute
+        </p>
       )}
       {routeModified && <p className="route-panel-modified">Modified</p>}
 
-      <div className="route-panel-sliders">
-        <label className="route-panel-label">
-          <span>Avoid traffic</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={profile.avoidTraffic}
+      <div className="route-panel-presets">
+        {PRESET_ORDER.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`route-panel-preset${preset === p ? " route-panel-preset--active" : ""}`}
             disabled={deepLinkLoading}
-            onChange={(e) => onProfileChange({ ...profile, avoidTraffic: Number(e.target.value) })}
-          />
-        </label>
-        <label className="route-panel-label">
-          <span>Prefer quiet surfaces</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={profile.preferQuietSurfaces}
-            disabled={deepLinkLoading}
-            onChange={(e) =>
-              onProfileChange({ ...profile, preferQuietSurfaces: Number(e.target.value) })
-            }
-          />
-        </label>
-        <label className="route-panel-label">
-          <span>Max gradient ({profile.maxGradient}%)</span>
-          <input
-            type="range"
-            min="0"
-            max="20"
-            step="1"
-            value={profile.maxGradient}
-            disabled={deepLinkLoading}
-            onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
-          />
-        </label>
+            onClick={() => onPresetChange(p)}
+            title={PRESET_METADATA[p].description}
+          >
+            {PRESET_METADATA[p].label}
+          </button>
+        ))}
+        {isCustom && <span className="route-panel-preset-custom">Customised</span>}
       </div>
+
+      <details className="route-panel-advanced">
+        <summary className="route-panel-advanced-summary">Advanced</summary>
+        <div className="route-panel-sliders">
+          <label className="route-panel-label">
+            <span>Avoid traffic</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={profile.avoidTraffic}
+              disabled={deepLinkLoading}
+              onChange={(e) =>
+                onProfileChange({ ...profile, avoidTraffic: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label className="route-panel-label">
+            <span>Prefer quiet surfaces</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={profile.preferQuietSurfaces}
+              disabled={deepLinkLoading}
+              onChange={(e) =>
+                onProfileChange({ ...profile, preferQuietSurfaces: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label className="route-panel-label">
+            <span>Max gradient ({profile.maxGradient}%)</span>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              step="1"
+              value={profile.maxGradient}
+              disabled={deepLinkLoading}
+              onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
+            />
+          </label>
+        </div>
+      </details>
 
       {hint && <p className="route-panel-hint">{hint}</p>}
 

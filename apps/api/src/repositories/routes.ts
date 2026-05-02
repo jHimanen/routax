@@ -1,4 +1,9 @@
-import type { CreateRouteRequest, SavedRoute, UpdateRouteRequest } from "@routax/shared";
+import type {
+  CreateRouteRequest,
+  RouteProfilePreset,
+  SavedRoute,
+  UpdateRouteRequest,
+} from "@routax/shared";
 import type { Pool } from "pg";
 
 interface ListOptions {
@@ -15,6 +20,7 @@ interface RouteRow {
   id: string;
   user_id: string;
   name: string;
+  preset: RouteProfilePreset;
   geometry_json: string;
   profile: unknown;
   distance_m: number;
@@ -55,6 +61,7 @@ function toSavedRoute(row: RouteRow): SavedRoute {
     id: row.id,
     userId: row.user_id,
     name: row.name,
+    preset: row.preset,
     geometry: JSON.parse(row.geometry_json) as SavedRoute["geometry"],
     profile: row.profile as SavedRoute["profile"],
     distance: row.distance_m,
@@ -74,14 +81,15 @@ export class RouteRepository {
   async create(userId: string, payload: CreateRouteRequest): Promise<SavedRoute> {
     const result = await this.pool.query<RouteRow>(
       `INSERT INTO routes (
-        user_id, name, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile
+        user_id, name, preset, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile
       ) VALUES (
-        $1, $2, ST_GeomFromGeoJSON($3)::geography, $4::jsonb, $5, $6, $7, $8, $9::jsonb, $10::jsonb
+        $1, $2, $3, ST_GeomFromGeoJSON($4)::geography, $5::jsonb, $6, $7, $8, $9, $10::jsonb, $11::jsonb
       )
       RETURNING
         id,
         user_id,
         name,
+        preset,
         ST_AsGeoJSON(geometry::geometry) AS geometry_json,
         profile,
         distance_m,
@@ -95,6 +103,7 @@ export class RouteRepository {
       [
         userId,
         payload.name,
+        payload.preset,
         JSON.stringify(payload.geometry),
         JSON.stringify(payload.profile),
         payload.distance,
@@ -132,6 +141,7 @@ export class RouteRepository {
         id,
         user_id,
         name,
+        preset,
         ST_AsGeoJSON(geometry::geometry) AS geometry_json,
         profile,
         distance_m,
@@ -169,6 +179,7 @@ export class RouteRepository {
         id,
         user_id,
         name,
+        preset,
         ST_AsGeoJSON(geometry::geometry) AS geometry_json,
         profile,
         distance_m,
@@ -176,6 +187,7 @@ export class RouteRepository {
         ascent_m,
         descent_m,
         elevation_profile,
+        surface_profile,
         created_at,
         updated_at
       FROM routes
@@ -200,6 +212,7 @@ export class RouteRepository {
         id,
         user_id,
         name,
+        preset,
         ST_AsGeoJSON(geometry::geometry) AS geometry_json,
         profile,
         distance_m,

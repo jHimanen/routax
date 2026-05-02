@@ -11,6 +11,20 @@ export interface Waypoint {
   label?: string;
 }
 
+export const RouteProfilePresetSchema = z.enum([
+  "quiet_country_roads",
+  "fastest_direct",
+  "maximum_climbing",
+  "avoid_gravel",
+]);
+export type RouteProfilePreset = z.infer<typeof RouteProfilePresetSchema>;
+
+export const RoutingProfileSchema = z.object({
+  avoidTraffic: z.number().min(0).max(1),
+  preferQuietSurfaces: z.number().min(0).max(1),
+  maxGradient: z.number().min(0).max(20),
+});
+
 export interface RoutingProfile {
   /** 0 = ignore, 1 = strongly avoid high-traffic roads. */
   avoidTraffic: number;
@@ -35,11 +49,8 @@ export type SurfaceClass = z.infer<typeof SurfaceClassSchema>;
 export const RouteRequestSchema = z.object({
   start: z.object({ lat: z.number(), lng: z.number() }),
   end: z.object({ lat: z.number(), lng: z.number() }),
-  profile: z.object({
-    avoidTraffic: z.number().min(0).max(1),
-    preferQuietSurfaces: z.number().min(0).max(1),
-    maxGradient: z.number().min(0).max(20),
-  }),
+  preset: RouteProfilePresetSchema,
+  advancedOverrides: RoutingProfileSchema.partial().optional(),
 });
 
 export type RouteRequest = z.infer<typeof RouteRequestSchema>;
@@ -78,8 +89,9 @@ export const SavedRouteSchema = z.object({
   id: z.string().uuid(),
   userId: z.string(),
   name: z.string().min(1),
+  preset: RouteProfilePresetSchema,
   geometry: RouteGeometrySchema,
-  profile: RouteRequestSchema.shape.profile,
+  profile: RoutingProfileSchema,
   distance: z.number().int().nonnegative(),
   duration: z.number().int().nonnegative(),
   ascent: z.number().int(),
@@ -92,7 +104,8 @@ export const SavedRouteSchema = z.object({
 
 export const CreateRouteRequestSchema = z.object({
   name: z.string().min(1),
-  profile: RouteRequestSchema.shape.profile,
+  preset: RouteProfilePresetSchema,
+  profile: RoutingProfileSchema,
   geometry: RouteGeometrySchema,
   distance: z.number().int().nonnegative(),
   duration: z.number().int().nonnegative(),

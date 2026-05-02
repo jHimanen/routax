@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GraphhopperRoutingProvider,
+  buildCustomModel,
   normalizeSurface,
   parseSurfaceDetails,
 } from "../GraphhopperRoutingProvider.js";
@@ -8,7 +9,7 @@ import {
 const BASE_REQUEST = {
   start: { lat: 60.1699, lng: 25.0097 },
   end: { lat: 60.1791, lng: 24.9506 },
-  profile: { avoidTraffic: 0.5, preferQuietSurfaces: 0.5, maxGradient: 10 },
+  preset: "fastest_direct" as const,
 };
 
 function mockFetchOk(paths: unknown[]) {
@@ -44,7 +45,7 @@ describe("GraphhopperRoutingProvider", () => {
         const result = await provider.planRoute({
           start: { lat: 61.498, lng: 23.76 },
           end: { lat: 62.243, lng: 25.747 },
-          profile: { avoidTraffic: 0, preferQuietSurfaces: 0, maxGradient: 20 },
+          preset: "maximum_climbing",
         });
 
         expect(result.ascent).toBeGreaterThan(200);
@@ -220,6 +221,70 @@ describe("GraphhopperRoutingProvider", () => {
           4, // but 4 expected
         ),
       ).toThrow("cover 2 edges, expected 4");
+    });
+  });
+
+  describe("buildCustomModel", () => {
+    const baseProfile = { avoidTraffic: 0, preferQuietSurfaces: 0, maxGradient: 20 };
+
+    it("fastest_direct produces a minimal model with low distance_influence", () => {
+      const model = buildCustomModel(baseProfile, "fastest_direct") as {
+        priority: unknown[];
+        distance_influence: number;
+      };
+      expect(model.distance_influence).toBe(60);
+      // No surface penalty rules — priority list is the four base slider rules only.
+      expect(
+        (model.priority as Array<{ if?: string }>).some((r) => r.if?.includes("surface")),
+      ).toBe(false);
+    });
+
+    it("avoid_gravel appends surface penalty rules not present in fastest_direct", () => {
+      const directModel = buildCustomModel(baseProfile, "fastest_direct") as {
+        priority: Array<{ if?: string }>;
+      };
+      const gravelModel = buildCustomModel(baseProfile, "avoid_gravel") as {
+        priority: Array<{ if?: string }>;
+      };
+      const directHasSurface = directModel.priority.some((r) => r.if?.includes("surface"));
+      const gravelHasSurface = gravelModel.priority.some((r) => r.if?.includes("surface"));
+      expect(directHasSurface).toBe(false);
+      expect(gravelHasSurface).toBe(true);
+    });
+
+    it("avoid_gravel penalises GRAVEL harder than COMPACTED", () => {
+      const model = buildCustomModel(baseProfile, "avoid_gravel") as {
+        priority: Array<{ if?: string; multiply_by?: string }>;
+      };
+      const gravelRule = model.priority.find((r) => r.if?.includes("GRAVEL"));
+      const compactedRule = model.priority.find((r) => r.if?.includes("COMPACTED"));
+      expect(gravelRule).toBeDefined();
+      expect(compactedRule).toBeDefined();
+      expect(Number(gravelRule?.multiply_by)).toBeLessThan(Number(compactedRule?.multiply_by));
+    });
+
+    it("quiet_country_roads uses higher distance_influence than fastest_direct", () => {
+      const fastModel = buildCustomModel(
+        { avoidTraffic: 0, preferQuietSurfaces: 0, maxGradient: 20 },
+        "fastest_direct",
+      ) as { distance_influence: number };
+      const quietModel = buildCustomModel(
+        { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 },
+        "quiet_country_roads",
+      ) as { distance_influence: number };
+      expect(quietModel.distance_influence).toBeGreaterThan(fastModel.distance_influence);
+    });
+
+    it("each preset produces a distinct serialisation", () => {
+      const presets = [
+        "fastest_direct",
+        "quiet_country_roads",
+        "maximum_climbing",
+        "avoid_gravel",
+      ] as const;
+      const models = presets.map((p) => JSON.stringify(buildCustomModel(baseProfile, p)));
+      const unique = new Set(models);
+      expect(unique.size).toBe(presets.length);
     });
   });
 });
