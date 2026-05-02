@@ -6,6 +6,7 @@ import {
   type RouteResult,
   type RoutingProfile,
   type SavedRoute,
+  type Waypoint,
 } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
@@ -20,8 +21,7 @@ const PRESET_ORDER: RouteProfilePreset[] = [
 ];
 
 interface RoutePanelProps {
-  start: boolean;
-  end: boolean;
+  waypoints: Waypoint[];
   preset: RouteProfilePreset;
   onPresetChange: (p: RouteProfilePreset) => void;
   isCustom: boolean;
@@ -47,6 +47,10 @@ interface RoutePanelProps {
   elevationProfileViz: boolean;
   /** Called with the map coordinate under the hovered chart position, or null on leave. */
   onElevationHover: (coord: [number, number] | null) => void;
+  onAddVia: () => void;
+  onRemoveVia: (id: string) => void;
+  onMoveViaUp: (id: string) => void;
+  onMoveViaDown: (id: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -75,8 +79,7 @@ function validateRouteName(raw: string): string | null {
 type SavePhase = "none" | "form" | "saving" | "saved";
 
 export function RoutePanel({
-  start,
-  end,
+  waypoints,
   preset,
   onPresetChange,
   isCustom,
@@ -95,8 +98,18 @@ export function RoutePanel({
   gpxExport,
   elevationProfileViz,
   onElevationHover,
+  onAddVia,
+  onRemoveVia,
+  onMoveViaUp,
+  onMoveViaDown,
 }: RoutePanelProps): React.JSX.Element {
-  const hint = !start ? "Click the map to place start" : !end ? "Click the map to place end" : null;
+  const hasStart = waypoints.length >= 1;
+  const hasFinish = waypoints.length >= 2;
+  const hint = !hasStart
+    ? "Click the map to place start"
+    : !hasFinish
+      ? "Click the map to place finish"
+      : null;
   const nameId = useId();
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>("none");
@@ -115,9 +128,7 @@ export function RoutePanel({
   const canUseSaved = savedRoutesUi && !deepLinkLoading;
 
   useEffect(() => {
-    if (!loadOpen || !canUseSaved) {
-      return;
-    }
+    if (!loadOpen || !canUseSaved) return;
     setLoadPending(true);
     setLoadError(null);
     const ac = new AbortController();
@@ -127,9 +138,7 @@ export function RoutePanel({
         setLoadPending(false);
       })
       .catch((e) => {
-        if (e instanceof Error && e.name === "AbortError") {
-          return;
-        }
+        if (e instanceof Error && e.name === "AbortError") return;
         setLoadError(e instanceof Error ? e.message : "Failed to list routes");
         setLoadItems([]);
         setLoadPending(false);
@@ -140,9 +149,7 @@ export function RoutePanel({
   }, [loadOpen, canUseSaved]);
 
   useEffect(() => {
-    if (!loadOpen) {
-      return;
-    }
+    if (!loadOpen) return;
     const onDown = (ev: PointerEvent) => {
       if (loadPanelRef.current && !loadPanelRef.current.contains(ev.target as Node)) {
         setLoadOpen(false);
@@ -171,9 +178,7 @@ export function RoutePanel({
       lastRouteSigRef.current = null;
       return;
     }
-    if (lastRouteSigRef.current === resultSignature) {
-      return;
-    }
+    if (lastRouteSigRef.current === resultSignature) return;
     if (lastRouteSigRef.current !== null) {
       if (savePhaseRef.current !== "saving") {
         setSavePhase("none");
@@ -186,9 +191,7 @@ export function RoutePanel({
   }, [resultSignature, result]);
 
   const startForm = () => {
-    if (!result) {
-      return;
-    }
+    if (!result) return;
     setFormName("");
     setFormError(null);
     setSavePhase("form");
@@ -201,9 +204,7 @@ export function RoutePanel({
       setFormError(nameErr);
       return;
     }
-    if (!result) {
-      return;
-    }
+    if (!result) return;
     setFormError(null);
     setSavePhase("saving");
     try {
@@ -251,6 +252,14 @@ export function RoutePanel({
   const showSaveForm = canUseSaved && result && (savePhase === "form" || savePhase === "saving");
   const showSaved = canUseSaved && savePhase === "saved" && savedUrl;
   const showSaveButton = canUseSaved && result && savePhase === "none" && !showSaved;
+
+  let viaIdx = 0;
+  function waypointLabel(w: Waypoint): string {
+    if (w.role === "start") return "Start";
+    if (w.role === "finish") return "Finish";
+    viaIdx++;
+    return `Stop ${viaIdx}`;
+  }
 
   return (
     <aside className={`route-panel${deepLinkLoading ? " route-panel--deeplink-load" : ""}`}>
@@ -315,6 +324,68 @@ export function RoutePanel({
         </p>
       )}
       {routeModified && <p className="route-panel-modified">Modified</p>}
+
+      {/* Waypoint list */}
+      {waypoints.length > 0 && (
+        <ul className="route-panel-waypoints">
+          {(() => {
+            viaIdx = 0;
+            return waypoints.map((w, idx) => (
+              <li key={w.id} className={`route-panel-waypoint route-panel-waypoint--${w.role}`}>
+                <span className="route-panel-waypoint-label">{waypointLabel(w)}</span>
+                <span className="route-panel-waypoint-coords">
+                  {w.position.lat.toFixed(4)}, {w.position.lng.toFixed(4)}
+                </span>
+                {w.role === "via" && (
+                  <span className="route-panel-waypoint-actions">
+                    <button
+                      type="button"
+                      className="route-panel-waypoint-btn"
+                      onClick={() => onMoveViaUp(w.id)}
+                      disabled={idx <= 1}
+                      aria-label="Move stop up"
+                      title="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="route-panel-waypoint-btn"
+                      onClick={() => onMoveViaDown(w.id)}
+                      disabled={idx >= waypoints.length - 2}
+                      aria-label="Move stop down"
+                      title="Move down"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="route-panel-waypoint-btn route-panel-waypoint-btn--remove"
+                      onClick={() => onRemoveVia(w.id)}
+                      aria-label="Remove stop"
+                      title="Remove"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </li>
+            ));
+          })()}
+        </ul>
+      )}
+
+      {/* Add stop button — visible once both start and finish are placed */}
+      {hasFinish && (
+        <button
+          type="button"
+          className="route-panel-add-via"
+          onClick={onAddVia}
+          disabled={deepLinkLoading}
+        >
+          + Add stop
+        </button>
+      )}
 
       <div className="route-panel-presets">
         {PRESET_ORDER.map((p) => (
@@ -513,7 +584,7 @@ export function RoutePanel({
         </div>
       )}
 
-      {start && (
+      {hasStart && (
         <button type="button" className="route-panel-reset" onClick={onReset}>
           Reset
         </button>
