@@ -113,18 +113,21 @@ export function buildCustomModel(
 
   // Penalise known unpaved surfaces; leave unknown unpenalised (OSM coverage is incomplete).
   if (preset === "avoid_gravel") {
+    // Only use Surface enum values that GH exposes in its custom-model DSL.
+    // OSM tags like earth/ground/mud/fine_gravel are folded into other enum
+    // values during graph import and are not addressable by name here.
     priority.push(
       {
-        if: "surface == GRAVEL || surface == DIRT || surface == GROUND || surface == EARTH || surface == MUD || surface == SAND",
+        if: "surface == GRAVEL || surface == DIRT || surface == SAND",
         multiply_by: "0.20",
-      },
-      {
-        if: "surface == COMPACTED || surface == FINE_GRAVEL || surface == PEBBLESTONE",
-        multiply_by: "0.50",
       },
       {
         if: "surface == UNPAVED",
         multiply_by: "0.30",
+      },
+      {
+        if: "surface == COMPACTED",
+        multiply_by: "0.50",
       },
     );
   }
