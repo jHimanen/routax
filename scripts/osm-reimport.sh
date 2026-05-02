@@ -16,7 +16,7 @@ PBF_URL="${PBF_URL:-https://download.geofabrik.de/europe/finland-latest.osm.pbf}
 DATA_DIR="${DATA_DIR:-infra/docker/graphhopper/data}"
 PBF_PATH="${DATA_DIR}/finland-latest.osm.pbf"
 LEDGER_PATH="${DATA_DIR}/osm-import-ledger.json"
-GRAPH_CACHE_DIR="${DATA_DIR}/graph-cache"
+GRAPH_CACHE_DIR="${DATA_DIR}/default-gh"
 ELEVATION_CACHE_DIR="${DATA_DIR}/elevation-cache"
 
 COMPOSE_FILE="${COMPOSE_FILE:-infra/docker/docker-compose.local.yml}"

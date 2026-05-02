@@ -16,6 +16,7 @@ function routeResultFromSaved(saved: SavedRoute): RouteResult {
     elevationProfile: saved.elevationProfile,
     ascent: saved.ascent,
     descent: saved.descent,
+    surfaces: saved.surfaceProfile,
   };
 }
 
@@ -369,6 +370,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         ascent: Math.round(result.ascent),
         descent: Math.round(result.descent),
         elevationProfile: result.elevationProfile,
+        surfaceProfile: result.surfaces,
       });
       return created.id;
     },

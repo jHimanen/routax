@@ -22,6 +22,7 @@ interface RouteRow {
   ascent_m: number;
   descent_m: number;
   elevation_profile: unknown;
+  surface_profile: unknown;
   created_at: Date;
   updated_at: Date;
 }
@@ -61,6 +62,7 @@ function toSavedRoute(row: RouteRow): SavedRoute {
     ascent: row.ascent_m,
     descent: row.descent_m,
     elevationProfile: row.elevation_profile as SavedRoute["elevationProfile"],
+    surfaceProfile: row.surface_profile as SavedRoute["surfaceProfile"],
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -72,9 +74,9 @@ export class RouteRepository {
   async create(userId: string, payload: CreateRouteRequest): Promise<SavedRoute> {
     const result = await this.pool.query<RouteRow>(
       `INSERT INTO routes (
-        user_id, name, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile
+        user_id, name, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile
       ) VALUES (
-        $1, $2, ST_GeomFromGeoJSON($3)::geography, $4::jsonb, $5, $6, $7, $8, $9::jsonb
+        $1, $2, ST_GeomFromGeoJSON($3)::geography, $4::jsonb, $5, $6, $7, $8, $9::jsonb, $10::jsonb
       )
       RETURNING
         id,
@@ -87,6 +89,7 @@ export class RouteRepository {
         ascent_m,
         descent_m,
         elevation_profile,
+        surface_profile,
         created_at,
         updated_at`,
       [
@@ -99,6 +102,7 @@ export class RouteRepository {
         payload.ascent,
         payload.descent,
         JSON.stringify(payload.elevationProfile),
+        JSON.stringify(payload.surfaceProfile ?? []),
       ],
     );
     const row = result.rows[0];
@@ -135,6 +139,7 @@ export class RouteRepository {
         ascent_m,
         descent_m,
         elevation_profile,
+        surface_profile,
         created_at,
         updated_at
       FROM routes
@@ -202,6 +207,7 @@ export class RouteRepository {
         ascent_m,
         descent_m,
         elevation_profile,
+        surface_profile,
         created_at,
         updated_at`,
       [id, userId, payload.name],

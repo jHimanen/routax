@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GraphhopperRoutingProvider } from "../GraphhopperRoutingProvider.js";
+import {
+  GraphhopperRoutingProvider,
+  normalizeSurface,
+  parseSurfaceDetails,
+} from "../GraphhopperRoutingProvider.js";
 
 const BASE_REQUEST = {
   start: { lat: 60.1699, lng: 25.0097 },
@@ -30,6 +34,7 @@ describe("GraphhopperRoutingProvider", () => {
       expect(result.elevationProfile.length).toBe(result.geometry.coordinates.length);
       expect(result.ascent).toBeGreaterThanOrEqual(0);
       expect(result.descent).toBeGreaterThanOrEqual(0);
+      expect(result.surfaces.length).toBe(result.geometry.coordinates.length - 1);
     });
 
     it.skipIf(skip)(
@@ -45,6 +50,8 @@ describe("GraphhopperRoutingProvider", () => {
         expect(result.ascent).toBeGreaterThan(200);
         expect(result.descent).toBeGreaterThan(200);
         expect(result.elevationProfile.length).toBe(result.geometry.coordinates.length);
+        expect(result.surfaces.length).toBe(result.geometry.coordinates.length - 1);
+        expect(new Set(result.surfaces).size).toBeGreaterThanOrEqual(2);
       },
     );
   });
@@ -54,7 +61,7 @@ describe("GraphhopperRoutingProvider", () => {
       vi.restoreAllMocks();
     });
 
-    it("strips elevation into a parallel array and keeps geometry 2D", async () => {
+    it("strips elevation into a parallel array, keeps geometry 2D, and parses surface details", async () => {
       mockFetchOk([
         {
           distance: 2000,
@@ -67,6 +74,12 @@ describe("GraphhopperRoutingProvider", () => {
               [25.0, 60.0, 42],
               [24.9, 60.1, 55],
               [24.8, 60.2, 38],
+            ],
+          },
+          details: {
+            surface: [
+              [0, 1, "asphalt"],
+              [1, 2, "gravel"],
             ],
           },
         },
@@ -84,6 +97,32 @@ describe("GraphhopperRoutingProvider", () => {
       expect(result.elevationProfile.length).toBe(result.geometry.coordinates.length);
       expect(result.ascent).toBe(30);
       expect(result.descent).toBe(25);
+      expect(result.surfaces).toEqual(["asphalt", "gravel"]);
+      expect(result.surfaces.length).toBe(result.geometry.coordinates.length - 1);
+    });
+
+    it("returns all-unknown surfaces when GH returns no surface details", async () => {
+      mockFetchOk([
+        {
+          distance: 1000,
+          time: 200000,
+          ascend: 0,
+          descend: 0,
+          points: {
+            type: "LineString",
+            coordinates: [
+              [25.0, 60.0, 10],
+              [24.9, 60.1, 10],
+              [24.8, 60.2, 10],
+            ],
+          },
+        },
+      ]);
+
+      const provider = new GraphhopperRoutingProvider();
+      const result = await provider.planRoute(BASE_REQUEST);
+
+      expect(result.surfaces).toEqual(["unknown", "unknown"]);
     });
 
     it("throws when GraphHopper returns a non-OK response", async () => {
@@ -126,6 +165,61 @@ describe("GraphhopperRoutingProvider", () => {
 
       const provider = new BrokenProvider();
       await expect(provider.planRoute(BASE_REQUEST)).rejects.toThrow("mismatch");
+    });
+  });
+
+  describe("normalizeSurface", () => {
+    it("maps direct values", () => {
+      expect(normalizeSurface("asphalt")).toBe("asphalt");
+      expect(normalizeSurface("gravel")).toBe("gravel");
+      expect(normalizeSurface("compacted")).toBe("compacted");
+      expect(normalizeSurface("unpaved")).toBe("unpaved");
+      expect(normalizeSurface("sand")).toBe("sand");
+      expect(normalizeSurface("wood")).toBe("wood");
+    });
+
+    it("maps aliased OSM values", () => {
+      expect(normalizeSurface("concrete")).toBe("asphalt");
+      expect(normalizeSurface("paving_stones")).toBe("asphalt");
+      expect(normalizeSurface("cobblestone")).toBe("paved_rough");
+      expect(normalizeSurface("sett")).toBe("paved_rough");
+      expect(normalizeSurface("fine_gravel")).toBe("compacted");
+      expect(normalizeSurface("dirt")).toBe("gravel");
+      expect(normalizeSurface("earth")).toBe("gravel");
+      expect(normalizeSurface("mud")).toBe("sand");
+      expect(normalizeSurface("metal_grid")).toBe("wood");
+    });
+
+    it("returns unknown for unrecognised or empty values", () => {
+      expect(normalizeSurface("")).toBe("unknown");
+      expect(normalizeSurface("some_future_osm_tag")).toBe("unknown");
+    });
+  });
+
+  describe("parseSurfaceDetails", () => {
+    it("expands ranges into a flat per-edge array", () => {
+      const result = parseSurfaceDetails(
+        [
+          [0, 2, "asphalt"],
+          [2, 4, "gravel"],
+        ],
+        4,
+      );
+      expect(result).toEqual(["asphalt", "asphalt", "gravel", "gravel"]);
+    });
+
+    it("returns all-unknown for empty ranges without throwing", () => {
+      const result = parseSurfaceDetails([], 3);
+      expect(result).toEqual(["unknown", "unknown", "unknown"]);
+    });
+
+    it("throws when non-empty ranges don't cover all edges", () => {
+      expect(() =>
+        parseSurfaceDetails(
+          [[0, 2, "asphalt"]], // covers 2 edges
+          4, // but 4 expected
+        ),
+      ).toThrow("cover 2 edges, expected 4");
     });
   });
 });

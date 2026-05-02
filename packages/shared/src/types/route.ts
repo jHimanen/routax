@@ -20,6 +20,18 @@ export interface RoutingProfile {
   maxGradient: number;
 }
 
+export const SurfaceClassSchema = z.enum([
+  "asphalt",
+  "paved_rough",
+  "compacted",
+  "gravel",
+  "sand",
+  "unpaved",
+  "wood",
+  "unknown",
+]);
+export type SurfaceClass = z.infer<typeof SurfaceClassSchema>;
+
 export const RouteRequestSchema = z.object({
   start: z.object({ lat: z.number(), lng: z.number() }),
   end: z.object({ lat: z.number(), lng: z.number() }),
@@ -42,6 +54,7 @@ export const RouteResultSchema = z.object({
   elevationProfile: z.array(z.number()),
   ascent: z.number(),
   descent: z.number(),
+  surfaces: z.array(SurfaceClassSchema).default([]),
 });
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
@@ -72,6 +85,7 @@ export const SavedRouteSchema = z.object({
   ascent: z.number().int(),
   descent: z.number().int(),
   elevationProfile: z.array(z.number()),
+  surfaceProfile: z.array(SurfaceClassSchema).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -85,6 +99,7 @@ export const CreateRouteRequestSchema = z.object({
   ascent: z.number().int(),
   descent: z.number().int(),
   elevationProfile: z.array(z.number()),
+  surfaceProfile: z.array(SurfaceClassSchema).default([]),
 });
 
 export const UpdateRouteRequestSchema = z.object({
