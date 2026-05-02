@@ -2,7 +2,14 @@
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { LatLng, RouteResult, RoutingProfile, SavedRoute } from "@routax/shared";
+import {
+  PRESET_DEFAULTS,
+  type LatLng,
+  type RouteProfilePreset,
+  type RouteResult,
+  type RoutingProfile,
+  type SavedRoute,
+} from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
@@ -252,21 +259,19 @@ function RoutaxMap({
 
 // ── RouteMap ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_PROFILE: RoutingProfile = {
-  avoidTraffic: 0,
-  preferQuietSurfaces: 0,
-  maxGradient: 20,
-};
+const DEFAULT_PRESET: RouteProfilePreset = "fastest_direct";
 
 export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): React.JSX.Element {
   const [start, setStart] = useState<LatLng | null>(null);
   const [end, setEnd] = useState<LatLng | null>(null);
-  const [profile, setProfile] = useState<RoutingProfile>(DEFAULT_PROFILE);
+  const [preset, setPreset] = useState<RouteProfilePreset>(DEFAULT_PRESET);
+  const [profile, setProfile] = useState<RoutingProfile>(PRESET_DEFAULTS[DEFAULT_PRESET]);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [resultOverride, setResultOverride] = useState<RouteResult | null>(null);
   const [loadBaseline, setLoadBaseline] = useState<{
     start: LatLng;
     end: LatLng;
+    preset: RouteProfilePreset;
     profile: RoutingProfile;
   } | null>(null);
   const [routeModified, setRouteModified] = useState(false);
@@ -283,7 +288,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
-  const { result, isLoading, error } = useRoute(start, end, profile, {
+  const { result, isLoading, error } = useRoute(start, end, preset, profile, {
     resultOverride,
   });
 
@@ -298,9 +303,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     const e: LatLng = { lat: b[1], lng: b[0] };
     setStart(s);
     setEnd(e);
+    setPreset(saved.preset);
     setProfile({ ...saved.profile });
     setResultOverride(routeResultFromSaved(saved));
-    setLoadBaseline({ start: s, end: e, profile: { ...saved.profile } });
+    setLoadBaseline({ start: s, end: e, preset: saved.preset, profile: { ...saved.profile } });
     setRouteModified(false);
   }, []);
 
@@ -347,6 +353,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     if (
       latLngEqual(start, loadBaseline.start) &&
       latLngEqual(end, loadBaseline.end) &&
+      preset === loadBaseline.preset &&
       profileEqual(profile, loadBaseline.profile)
     ) {
       return;
@@ -363,6 +370,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       }
       const created = await createRoute({
         name,
+        preset,
         profile,
         geometry: result.geometry,
         distance: Math.round(result.distance),
@@ -374,7 +382,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       });
       return created.id;
     },
-    [result, profile],
+    [result, preset, profile],
   );
 
   const handleReset = useCallback(() => {
@@ -426,6 +434,12 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       <RoutePanel
         start={start !== null}
         end={end !== null}
+        preset={preset}
+        onPresetChange={(p) => {
+          setPreset(p);
+          setProfile(PRESET_DEFAULTS[p]);
+        }}
+        isCustom={profile !== PRESET_DEFAULTS[preset]}
         profile={profile}
         onProfileChange={setProfile}
         result={result}
