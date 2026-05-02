@@ -16,6 +16,7 @@ function routeResultFromSaved(saved: SavedRoute): RouteResult {
     elevationProfile: saved.elevationProfile,
     ascent: saved.ascent,
     descent: saved.descent,
+    surfaces: saved.surfaceProfile,
   };
 }
 

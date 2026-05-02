@@ -22,6 +22,7 @@ const STUB_RESULT: RouteResult = {
   elevationProfile: [10, 12],
   ascent: 25,
   descent: 30,
+  surfaces: ["asphalt"],
 };
 
 function makeContainer(overrides?: Partial<Container>): Container {
