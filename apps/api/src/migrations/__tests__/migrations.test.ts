@@ -40,7 +40,7 @@ describe("migration round-trip", () => {
     await pool.end();
   });
 
-  it("can roll back all 3 migrations then re-apply them", async () => {
+  it("can roll back all 4 migrations then re-apply them", async () => {
     const opts = {
       databaseUrl: {
         host: process.env.POSTGRES_HOST ?? "localhost",
@@ -54,8 +54,8 @@ describe("migration round-trip", () => {
       log: () => {},
     };
 
-    // Roll back all 3
-    await runner({ ...opts, direction: "down", count: 3 });
+    // Roll back all 4
+    await runner({ ...opts, direction: "down", count: 4 });
     expect(await tableSet(pool)).toEqual(new Set());
 
     // Re-apply all

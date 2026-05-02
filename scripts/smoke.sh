@@ -56,6 +56,37 @@ check_elevation() {
   fi
 }
 
+check_surfaces() {
+  local label="$1"
+  local body="$2"
+
+  local response surf_len coord_len expected distinct
+  response=$(curl -sk -X POST "${BASE}/api/route" \
+    -H "Content-Type: application/json" \
+    -d "$body")
+
+  coord_len=$(echo "$response" | jq '.geometry.coordinates | length')
+  surf_len=$(echo "$response"  | jq '.surfaces | length')
+  expected=$(( coord_len - 1 ))
+
+  if [ "$surf_len" -eq "$expected" ] && [ "$surf_len" -gt 0 ]; then
+    echo "PASS [$label/surfaces-length] surfaces.length == coordinates.length - 1 ($surf_len)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL [$label/surfaces-length] surf=$surf_len expected=$expected"
+    FAIL=$((FAIL + 1))
+  fi
+
+  distinct=$(echo "$response" | jq '.surfaces | unique | length')
+  if [ "$distinct" -ge 2 ]; then
+    echo "PASS [$label/surfaces-diversity] distinct surface classes=$distinct"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL [$label/surfaces-diversity] only $distinct distinct class(es)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
 echo "Smoke — entry: $BASE"
 echo ""
 
@@ -65,8 +96,11 @@ check "api/route"  POST "/api/route"  200 \
   -H "Content-Type: application/json" \
   -d '{"start":{"lat":60.1699,"lng":25.0097},"end":{"lat":60.1791,"lng":24.9506},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":1}}'
 
-# Elevation checks on Tampere→Jyväskylä — enough relief to guarantee non-zero ascent
+# Elevation and surface checks on Tampere→Jyväskylä — enough relief for non-zero ascent,
+# enough route variety for ≥2 distinct surface classes
 check_elevation "tampere-jyvaskyla" \
+  '{"start":{"lat":61.498,"lng":23.760},"end":{"lat":62.243,"lng":25.747},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":20}}'
+check_surfaces "tampere-jyvaskyla" \
   '{"start":{"lat":61.498,"lng":23.760},"end":{"lat":62.243,"lng":25.747},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":20}}'
 
 echo ""
