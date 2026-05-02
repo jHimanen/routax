@@ -40,6 +40,36 @@ pnpm --filter @routax/api db:migrate:status
 
 ---
 
+## Dev seed data
+
+Populates 8 feature flags, 58 analytics events, and 5 Finnish sample routes for local development.
+
+```sh
+pnpm --filter @routax/api db:seed
+```
+
+Safe to run multiple times (idempotent). The script auto-detects whether GraphHopper is running:
+- **GraphHopper up** — routes are planned live via the routing engine
+- **GraphHopper down** — routes use committed placeholder geometry from `scripts/seed-fixtures/routes.json`
+
+### Reset and reseed (60-second budget)
+
+```sh
+pnpm --filter @routax/api db:seed -- --reset
+```
+
+Rolls all migrations down to zero, re-applies them, then seeds. Use this after a migration conflict or to start completely fresh.
+
+### Regenerate route fixtures
+
+```sh
+pnpm --filter @routax/api db:seed -- --write-fixtures
+```
+
+Requires a live GraphHopper stack (`make up`). Overwrites `scripts/seed-fixtures/routes.json` with real routed geometry.
+
+---
+
 ## Migration conventions
 
 ### File format

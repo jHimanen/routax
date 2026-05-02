@@ -26,6 +26,17 @@ Copy `.env.example` to `.env.local` at the repo root. Defaults:
 | `MINIO_ROOT_USER` | `routax_minio` |
 | `MINIO_ROOT_PASSWORD` | `routax_minio_secret` |
 
+## First-time setup
+
+After `make up`, apply migrations and populate dev data:
+
+```sh
+pnpm --filter @routax/api db:migrate
+pnpm --filter @routax/api db:seed
+```
+
+Seeds 8 feature flags, 58 analytics events, and 5 Finnish cycling routes for `seed-user-001`. Re-running `db:seed` is safe (idempotent).
+
 ## Commands
 
 ```sh
