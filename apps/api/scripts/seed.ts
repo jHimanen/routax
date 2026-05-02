@@ -14,7 +14,8 @@ import { createContainer, createPool } from "../src/container.js";
 // Do not change: alters all seed route IDs and breaks saved dev links.
 const SEED_NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
-export const SEED_USER_ID = "seed-user-001";
+// Matches StubAuthProvider default so seeded data is visible in the UI without extra config.
+export const SEED_USER_ID = process.env.STUB_AUTH_USER_ID ?? "stub-user-1";
 
 export const ALL_FLAGS = [
   // Phase 2 — upsert for completeness
