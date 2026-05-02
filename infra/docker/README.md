@@ -46,6 +46,27 @@ make logs    # stream logs from all services
 make reset   # stop services and DELETE all volumes (fresh start)
 ```
 
+## Refreshing OSM data
+
+Finland OSM data is updated weekly by Geofabrik. Run `make osm-reimport` before
+a routing-quality test session or after a significant OSM update.
+
+```sh
+make osm-reimport             # download → compare hash → rebuild graph if changed
+make osm-reimport ARGS=--force    # force rebuild without redownloading
+make osm-reimport ARGS=--dry-run  # report what would happen, no changes made
+```
+
+The script compares the SHA-256 of the downloaded PBF against a ledger at
+`infra/docker/graphhopper/data/osm-import-ledger.json`. If the hash is
+unchanged the script exits immediately — no rebuild, no downtime (~1 min on a
+fast connection). When the hash has changed it stops GraphHopper, wipes the
+graph and elevation caches, restarts, and waits up to 30 min for GraphHopper to
+finish importing before writing the updated ledger (~10 min typical for Finland).
+
+Recommended cadence: weekly, or before any routing-quality task in Phase 3+.
+The ledger is gitignored.
+
 ## State
 
 - Postgres and MinIO data persists across `make down` / `make up` cycles.

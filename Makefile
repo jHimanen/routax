@@ -2,7 +2,7 @@ COMPOSE_FILE := infra/docker/docker-compose.local.yml
 COMPOSE_ENV_FILE := .env.local
 INFRA_SERVICES := postgres minio mailhog
 
-.PHONY: up up-build down logs reset dev download-osm smoke-test smoke test test-integration
+.PHONY: up up-build down logs reset dev osm-reimport download-osm smoke-test smoke test test-integration
 
 up:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up -d
@@ -38,7 +38,11 @@ dev:
 	@echo "→ Starting api + web with hot-reload…"
 	pnpm --parallel --filter @routax/api --filter @routax/web dev
 
+osm-reimport:
+	bash scripts/osm-reimport.sh $(ARGS)
+
 download-osm:
+	@echo "NOTE: 'make download-osm' is deprecated. Use 'make osm-reimport'."
 	bash scripts/download-finland-osm.sh
 
 smoke-test:
