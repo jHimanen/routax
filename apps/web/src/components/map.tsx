@@ -9,11 +9,13 @@ import {
   type RouteResult,
   type RoutingProfile,
   type SavedRoute,
+  type Waypoint,
 } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute, getRoute } from "../lib/api";
+import { RoutePanel } from "./RoutePanel";
 
 function routeResultFromSaved(saved: SavedRoute): RouteResult {
   return {
@@ -27,11 +29,6 @@ function routeResultFromSaved(saved: SavedRoute): RouteResult {
   };
 }
 
-const EPS = 1e-7;
-function latLngEqual(a: LatLng, b: LatLng): boolean {
-  return Math.abs(a.lat - b.lat) < EPS && Math.abs(a.lng - b.lng) < EPS;
-}
-
 function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
   return (
     a.avoidTraffic === b.avoidTraffic &&
@@ -39,10 +36,62 @@ function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
     a.maxGradient === b.maxGradient
   );
 }
-import { RoutePanel } from "./RoutePanel";
 
-const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
-const FINLAND_ZOOM = 4.8;
+function waypointsEqual(a: Waypoint[], b: Waypoint[]): boolean {
+  if (a.length !== b.length) return false;
+  const EPS = 1e-7;
+  for (let i = 0; i < a.length; i++) {
+    const wa = a[i];
+    const wb = b[i];
+    if (!wa || !wb) return false;
+    if (
+      Math.abs(wa.position.lat - wb.position.lat) >= EPS ||
+      Math.abs(wa.position.lng - wb.position.lng) >= EPS
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Euclidean squared distance from point p to the segment (a, b). */
+function distSqPointToSegment(
+  p: { lat: number; lng: number },
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const dx = b.lng - a.lng;
+  const dy = b.lat - a.lat;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) {
+    const ex = p.lng - a.lng;
+    const ey = p.lat - a.lat;
+    return ex * ex + ey * ey;
+  }
+  const t = Math.max(0, Math.min(1, ((p.lng - a.lng) * dx + (p.lat - a.lat) * dy) / lenSq));
+  const cx = a.lng + t * dx;
+  const cy = a.lat + t * dy;
+  const fx = p.lng - cx;
+  const fy = p.lat - cy;
+  return fx * fx + fy * fy;
+}
+
+/** Returns the index in waypoints[] after which to insert a new via. */
+function findInsertIndex(click: LatLng, waypoints: Waypoint[]): number {
+  let minDist = Number.POSITIVE_INFINITY;
+  let minIdx = 0;
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const wA = waypoints[i];
+    const wB = waypoints[i + 1];
+    if (!wA || !wB) continue;
+    const d = distSqPointToSegment(click, wA.position, wB.position);
+    if (d < minDist) {
+      minDist = d;
+      minIdx = i;
+    }
+  }
+  return minIdx + 1;
+}
 
 function getStyleUrl(): string | null {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -50,32 +99,48 @@ function getStyleUrl(): string | null {
   return `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
 }
 
+function makeWaypointId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+}
+
+const MARKER_COLORS: Record<Waypoint["role"], string> = {
+  start: "#22c55e",
+  finish: "#ef4444",
+  via: "#3b82f6",
+};
+
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
 
 interface RoutaxMapProps {
-  start: LatLng | null;
-  end: LatLng | null;
+  waypoints: Waypoint[];
   routeGeoJSON: RouteResult["geometry"] | null;
   onMapClick: (lngLat: LatLng) => void;
   onMapLoaded: () => void;
   mapLoaded: boolean;
   hoverCoord: [number, number] | null;
+  onWaypointMoved: (id: string, pos: LatLng) => void;
+  onClickRoute: (lngLat: LatLng) => void;
 }
 
 function RoutaxMap({
-  start,
-  end,
+  waypoints,
   routeGeoJSON,
   onMapClick,
   onMapLoaded,
   mapLoaded,
   hoverCoord,
+  onWaypointMoved,
+  onClickRoute,
 }: RoutaxMapProps): React.JSX.Element {
+  const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
+  const FINLAND_ZOOM = 4.8;
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const styleUrl = getStyleUrl();
 
-  // Keep callbacks fresh in the long-lived map event handlers.
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
@@ -84,6 +149,16 @@ function RoutaxMap({
   const onMapLoadedRef = useRef(onMapLoaded);
   useEffect(() => {
     onMapLoadedRef.current = onMapLoaded;
+  });
+
+  const onWaypointMovedRef = useRef(onWaypointMoved);
+  useEffect(() => {
+    onWaypointMovedRef.current = onWaypointMoved;
+  });
+
+  const onClickRouteRef = useRef(onClickRoute);
+  useEffect(() => {
+    onClickRouteRef.current = onClickRoute;
   });
 
   // Map lifecycle
@@ -115,42 +190,53 @@ function RoutaxMap({
       map.remove();
       mapRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [styleUrl]);
 
   // Cursor feedback
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();
     if (!canvas) return;
-    canvas.style.cursor = start === null || end === null ? "crosshair" : "grab";
-  }, [start, end]);
+    canvas.style.cursor = waypoints.length < 2 ? "crosshair" : "grab";
+  }, [waypoints.length]);
 
-  // Markers
-  const startMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const endMarkerRef = useRef<maplibregl.Marker | null>(null);
+  // Markers — keep a stable map from id → Marker
+  const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
 
-    if (!startMarkerRef.current) {
-      startMarkerRef.current = new maplibregl.Marker({ color: "#22c55e" });
-    }
-    if (!endMarkerRef.current) {
-      endMarkerRef.current = new maplibregl.Marker({ color: "#ef4444" });
+    const currentIds = new Set(waypoints.map((w) => w.id));
+
+    // Remove markers no longer in waypoints
+    for (const [id, marker] of markersRef.current) {
+      if (!currentIds.has(id)) {
+        marker.remove();
+        markersRef.current.delete(id);
+      }
     }
 
-    if (start) {
-      startMarkerRef.current.setLngLat([start.lng, start.lat]).addTo(map);
-    } else {
-      startMarkerRef.current.remove();
+    // Add or update
+    for (const wp of waypoints) {
+      const existing = markersRef.current.get(wp.id);
+      if (existing) {
+        existing.setLngLat([wp.position.lng, wp.position.lat]);
+      } else {
+        const marker = new maplibregl.Marker({
+          color: MARKER_COLORS[wp.role],
+          draggable: true,
+        });
+        marker.setLngLat([wp.position.lng, wp.position.lat]).addTo(map);
+        const id = wp.id;
+        marker.on("dragend", () => {
+          const ll = marker.getLngLat();
+          onWaypointMovedRef.current(id, { lat: ll.lat, lng: ll.lng });
+        });
+        markersRef.current.set(id, marker);
+      }
     }
-
-    if (end) {
-      endMarkerRef.current.setLngLat([end.lng, end.lat]).addTo(map);
-    } else {
-      endMarkerRef.current.remove();
-    }
-  }, [start, end, mapLoaded]);
+  }, [waypoints, mapLoaded]);
 
   // Route layer
   const SOURCE_ID = "routax-route";
@@ -191,6 +277,25 @@ function RoutaxMap({
             "line-opacity": 0.85,
           },
         });
+
+        // Click on route line to insert via waypoint
+        map.on("click", LAYER_ID, (e) => {
+          e.preventDefault();
+          onClickRouteRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+        });
+
+        // Widen hit area for easier clicking
+        map.addLayer({
+          id: `${LAYER_ID}-hit`,
+          type: "line",
+          source: SOURCE_ID,
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: { "line-color": "transparent", "line-width": 12 },
+        });
+        map.on("click", `${LAYER_ID}-hit`, (e) => {
+          e.preventDefault();
+          onClickRouteRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+        });
       }
 
       map.fitBounds(bounds, {
@@ -198,6 +303,7 @@ function RoutaxMap({
         animate: true,
       });
     } else {
+      if (map.getLayer(`${LAYER_ID}-hit`)) map.removeLayer(`${LAYER_ID}-hit`);
       if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     }
@@ -262,15 +368,13 @@ function RoutaxMap({
 const DEFAULT_PRESET: RouteProfilePreset = "fastest_direct";
 
 export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): React.JSX.Element {
-  const [start, setStart] = useState<LatLng | null>(null);
-  const [end, setEnd] = useState<LatLng | null>(null);
+  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [preset, setPreset] = useState<RouteProfilePreset>(DEFAULT_PRESET);
   const [profile, setProfile] = useState<RoutingProfile>(PRESET_DEFAULTS[DEFAULT_PRESET]);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [resultOverride, setResultOverride] = useState<RouteResult | null>(null);
   const [loadBaseline, setLoadBaseline] = useState<{
-    start: LatLng;
-    end: LatLng;
+    waypoints: Waypoint[];
     preset: RouteProfilePreset;
     profile: RoutingProfile;
   } | null>(null);
@@ -288,35 +392,42 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
-  const { result, isLoading, error } = useRoute(start, end, preset, profile, {
+  const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
   });
 
   const applySavedRoute = useCallback((saved: SavedRoute) => {
-    const coords = saved.geometry.coordinates;
-    if (coords.length < 2) {
-      return;
+    let restoredWaypoints: Waypoint[];
+
+    if (saved.waypoints && saved.waypoints.length >= 2) {
+      restoredWaypoints = saved.waypoints;
+    } else {
+      // Legacy route: derive start/finish from geometry
+      const coords = saved.geometry.coordinates;
+      if (coords.length < 2) return;
+      const a = coords[0] as [number, number];
+      const b = coords[coords.length - 1] as [number, number];
+      restoredWaypoints = [
+        { id: makeWaypointId(), position: { lat: a[1], lng: a[0] }, role: "start" },
+        { id: makeWaypointId(), position: { lat: b[1], lng: b[0] }, role: "finish" },
+      ];
     }
-    const a = coords[0] as [number, number];
-    const b = coords[coords.length - 1] as [number, number];
-    const s: LatLng = { lat: a[1], lng: a[0] };
-    const e: LatLng = { lat: b[1], lng: b[0] };
-    setStart(s);
-    setEnd(e);
+
+    setWaypoints(restoredWaypoints);
     setPreset(saved.preset);
     setProfile({ ...saved.profile });
     setResultOverride(routeResultFromSaved(saved));
-    setLoadBaseline({ start: s, end: e, preset: saved.preset, profile: { ...saved.profile } });
+    setLoadBaseline({
+      waypoints: restoredWaypoints,
+      preset: saved.preset,
+      profile: { ...saved.profile },
+    });
     setRouteModified(false);
   }, []);
 
   useEffect(() => {
-    if (!initialRouteId || initialRouteId.trim() === "") {
-      return;
-    }
-    if (!isReady) {
-      return;
-    }
+    if (!initialRouteId || initialRouteId.trim() === "") return;
+    if (!isReady) return;
     if (!savedFlagOn) {
       setDeepLinkResolved(true);
       return;
@@ -326,15 +437,11 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     void (async () => {
       try {
         const r = await getRoute(initialRouteId, ac.signal);
-        if (!cancelled && r) {
-          applySavedRoute(r);
-        }
+        if (!cancelled && r) applySavedRoute(r);
       } catch {
         // 404/validation handled by getRoute; network errors fall through
       } finally {
-        if (!cancelled) {
-          setDeepLinkResolved(true);
-        }
+        if (!cancelled) setDeepLinkResolved(true);
       }
     })();
     return () => {
@@ -343,16 +450,12 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     };
   }, [initialRouteId, isReady, savedFlagOn, applySavedRoute]);
 
+  // Modification detection when a saved route is loaded
   useEffect(() => {
-    if (!resultOverride || !loadBaseline) {
-      return;
-    }
-    if (!start || !end) {
-      return;
-    }
+    if (!resultOverride || !loadBaseline) return;
+    if (waypoints.length === 0) return;
     if (
-      latLngEqual(start, loadBaseline.start) &&
-      latLngEqual(end, loadBaseline.end) &&
+      waypointsEqual(waypoints, loadBaseline.waypoints) &&
       preset === loadBaseline.preset &&
       profileEqual(profile, loadBaseline.profile)
     ) {
@@ -361,13 +464,11 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setResultOverride(null);
     setLoadBaseline(null);
     setRouteModified(true);
-  }, [start, end, preset, profile, resultOverride, loadBaseline]);
+  }, [waypoints, preset, profile, resultOverride, loadBaseline]);
 
   const handleSave = useCallback(
     async (name: string) => {
-      if (!result) {
-        throw new Error("No route to save");
-      }
+      if (!result) throw new Error("No route to save");
       const created = await createRoute({
         name,
         preset,
@@ -379,15 +480,15 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         descent: Math.round(result.descent),
         elevationProfile: result.elevationProfile,
         surfaceProfile: result.surfaces,
+        waypoints,
       });
       return created.id;
     },
-    [result, preset, profile],
+    [result, preset, profile, waypoints],
   );
 
   const handleReset = useCallback(() => {
-    setStart(null);
-    setEnd(null);
+    setWaypoints([]);
     setResultOverride(null);
     setLoadBaseline(null);
     setRouteModified(false);
@@ -395,23 +496,89 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const handleMapClick = useCallback(
     (lngLat: LatLng) => {
-      if (initialRouteId && !deepLinkResolved) {
-        return;
-      }
-      if (!start) {
-        setStart(lngLat);
-      } else if (!end) {
-        setEnd(lngLat);
-      } else {
-        // Slide forward: old end becomes new start, new click is new end.
-        setStart(end);
-        setEnd(lngLat);
-      }
+      if (initialRouteId && !deepLinkResolved) return;
+      setWaypoints((prev) => {
+        if (prev.length === 0) {
+          return [{ id: makeWaypointId(), position: lngLat, role: "start" }];
+        }
+        if (prev.length === 1) {
+          return [...prev, { id: makeWaypointId(), position: lngLat, role: "finish" }];
+        }
+        // Already have start+finish — ignore plain map clicks; use panel controls or route click
+        return prev;
+      });
     },
-    [start, end, initialRouteId, deepLinkResolved],
+    [initialRouteId, deepLinkResolved],
   );
 
-  // Escape clears waypoints
+  const handleAddVia = useCallback(() => {
+    setWaypoints((prev) => {
+      if (prev.length < 2) return prev;
+      const last = prev.at(-1);
+      const secondLast = prev.at(-2);
+      if (!last || !secondLast) return prev;
+      const newVia: Waypoint = {
+        id: makeWaypointId(),
+        position: {
+          lat: (last.position.lat + secondLast.position.lat) / 2,
+          lng: (last.position.lng + secondLast.position.lng) / 2,
+        },
+        role: "via",
+      };
+      return [...prev.slice(0, -1), newVia, last];
+    });
+  }, []);
+
+  const handleRemoveVia = useCallback((id: string) => {
+    setWaypoints((prev) => prev.filter((w) => w.id !== id));
+  }, []);
+
+  const handleMoveViaUp = useCallback((id: string) => {
+    setWaypoints((prev) => {
+      const idx = prev.findIndex((w) => w.id === id);
+      if (idx <= 1) return prev; // can't move above start
+      const next = [...prev];
+      const a = next[idx];
+      const b = next[idx - 1];
+      if (a !== undefined && b !== undefined) {
+        next[idx - 1] = a;
+        next[idx] = b;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleMoveViaDown = useCallback((id: string) => {
+    setWaypoints((prev) => {
+      const idx = prev.findIndex((w) => w.id === id);
+      if (idx < 0 || idx >= prev.length - 2) return prev; // can't move below finish
+      const next = [...prev];
+      const a = next[idx];
+      const b = next[idx + 1];
+      if (a !== undefined && b !== undefined) {
+        next[idx] = b;
+        next[idx + 1] = a;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleWaypointMoved = useCallback((id: string, pos: LatLng) => {
+    setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, position: pos } : w)));
+  }, []);
+
+  const handleClickRoute = useCallback((lngLat: LatLng) => {
+    setWaypoints((prev) => {
+      if (prev.length < 2) return prev;
+      const insertAt = findInsertIndex(lngLat, prev);
+      const newVia: Waypoint = { id: makeWaypointId(), position: lngLat, role: "via" };
+      const next = [...prev];
+      next.splice(insertAt, 0, newVia);
+      return next;
+    });
+  }, []);
+
+  // Escape clears all waypoints
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleReset();
@@ -423,17 +590,17 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <RoutaxMap
-        start={start}
-        end={end}
+        waypoints={waypoints}
         routeGeoJSON={result?.geometry ?? null}
         onMapClick={handleMapClick}
         onMapLoaded={() => setMapLoaded(true)}
         mapLoaded={mapLoaded}
         hoverCoord={hoverCoord}
+        onWaypointMoved={handleWaypointMoved}
+        onClickRoute={handleClickRoute}
       />
       <RoutePanel
-        start={start !== null}
-        end={end !== null}
+        waypoints={waypoints}
         preset={preset}
         onPresetChange={(p) => {
           setPreset(p);
@@ -455,6 +622,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         gpxExport={gpxExport}
         elevationProfileViz={elevationProfileViz}
         onElevationHover={setHoverCoord}
+        onAddVia={handleAddVia}
+        onRemoveVia={handleRemoveVia}
+        onMoveViaUp={handleMoveViaUp}
+        onMoveViaDown={handleMoveViaDown}
       />
     </div>
   );
