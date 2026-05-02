@@ -12,7 +12,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
       const body = request.body;
 
       request.log.info(
-        { userId: user.id, start: body.start, end: body.end },
+        { userId: user.id, start: body.start, end: body.end, preset: body.preset },
         "route request received",
       );
 
@@ -27,14 +27,25 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         category: "route",
         message: "route planned",
         data: {
-          avoidTraffic: body.profile.avoidTraffic,
-          preferQuietSurfaces: body.profile.preferQuietSurfaces,
-          maxGradient: body.profile.maxGradient,
+          preset: body.preset,
+          advancedOverrides: body.advancedOverrides ?? null,
           distanceM: result.distance,
           ascent: result.ascent,
         },
         level: "info",
       });
+
+      await container.analytics.track({
+        name: "route_planned",
+        userId: user.id,
+        properties: {
+          preset: body.preset,
+          has_advanced_overrides: body.advancedOverrides !== undefined,
+          distance_m: result.distance,
+          ascent_m: result.ascent,
+        },
+      });
+
       return result;
     });
 }

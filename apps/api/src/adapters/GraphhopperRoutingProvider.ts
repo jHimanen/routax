@@ -1,4 +1,11 @@
-import type { RouteRequest, RouteResult, RoutingProvider, SurfaceClass } from "@routax/shared";
+import {
+  PRESET_DEFAULTS,
+  type RouteProfilePreset,
+  type RouteRequest,
+  type RouteResult,
+  type RoutingProvider,
+  type SurfaceClass,
+} from "@routax/shared";
 
 interface GhResponse {
   paths: Array<{
@@ -70,31 +77,75 @@ export function parseSurfaceDetails(
   return surfaces;
 }
 
-function buildCustomModel(profile: RouteRequest["profile"]): unknown {
+const DISTANCE_INFLUENCE: Record<RouteProfilePreset, number> = {
+  fastest_direct: 60,
+  quiet_country_roads: 80,
+  maximum_climbing: 75,
+  avoid_gravel: 75,
+};
+
+export function buildCustomModel(
+  profile: { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number },
+  preset: RouteProfilePreset,
+): unknown {
   const t = profile.avoidTraffic;
   const q = profile.preferQuietSurfaces;
   const g = profile.maxGradient;
 
+  const priority: unknown[] = [
+    {
+      if: "road_class == PRIMARY",
+      multiply_by: (1 - t * 0.9).toFixed(2),
+    },
+    {
+      else_if: "road_class == SECONDARY",
+      multiply_by: (1 - t * 0.5).toFixed(2),
+    },
+    {
+      if: "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
+      multiply_by: (1 + q * 0.8).toFixed(2),
+    },
+    {
+      if: `average_slope > ${g}`,
+      multiply_by: "0.01",
+    },
+  ];
+
+  // Penalise known unpaved surfaces; leave unknown unpenalised (OSM coverage is incomplete).
+  if (preset === "avoid_gravel") {
+    priority.push(
+      {
+        if: "surface == GRAVEL || surface == DIRT || surface == GROUND || surface == EARTH || surface == MUD || surface == SAND",
+        multiply_by: "0.20",
+      },
+      {
+        if: "surface == COMPACTED || surface == FINE_GRAVEL || surface == PEBBLESTONE",
+        multiply_by: "0.50",
+      },
+      {
+        if: "surface == UNPAVED",
+        multiply_by: "0.30",
+      },
+    );
+  }
+
   return {
-    priority: [
-      {
-        if: "road_class == PRIMARY",
-        multiply_by: (1 - t * 0.9).toFixed(2),
-      },
-      {
-        else_if: "road_class == SECONDARY",
-        multiply_by: (1 - t * 0.5).toFixed(2),
-      },
-      {
-        if: "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
-        multiply_by: (1 + q * 0.8).toFixed(2),
-      },
-      {
-        if: `average_slope > ${g}`,
-        multiply_by: "0.01",
-      },
-    ],
-    distance_influence: 70,
+    priority,
+    distance_influence: DISTANCE_INFLUENCE[preset],
+  };
+}
+
+function resolveProfile(request: RouteRequest): {
+  avoidTraffic: number;
+  preferQuietSurfaces: number;
+  maxGradient: number;
+} {
+  const defaults = PRESET_DEFAULTS[request.preset];
+  const overrides = request.advancedOverrides ?? {};
+  return {
+    avoidTraffic: overrides.avoidTraffic ?? defaults.avoidTraffic,
+    preferQuietSurfaces: overrides.preferQuietSurfaces ?? defaults.preferQuietSurfaces,
+    maxGradient: overrides.maxGradient ?? defaults.maxGradient,
   };
 }
 
@@ -106,6 +157,8 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
   }
 
   async planRoute(request: RouteRequest): Promise<RouteResult> {
+    const profile = resolveProfile(request);
+
     const body = {
       points: [
         [request.start.lng, request.start.lat],
@@ -115,7 +168,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       elevation: true,
       points_encoded: false,
       "ch.disable": true,
-      custom_model: buildCustomModel(request.profile),
+      custom_model: buildCustomModel(profile, request.preset),
       details: ["surface"],
     };
 
