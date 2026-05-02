@@ -12,7 +12,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
       const body = request.body;
 
       request.log.info(
-        { userId: user.id, start: body.start, end: body.end, preset: body.preset },
+        { userId: user.id, waypoint_count: body.waypoints.length, preset: body.preset },
         "route request received",
       );
 
@@ -41,6 +41,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         properties: {
           preset: body.preset,
           has_advanced_overrides: body.advancedOverrides !== undefined,
+          waypoint_count: body.waypoints.length,
           distance_m: result.distance,
           ascent_m: result.ascent,
         },

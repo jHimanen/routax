@@ -4,8 +4,10 @@ import { buildApp } from "../../app.js";
 import type { Container } from "../../container.js";
 
 const VALID_BODY = {
-  start: { lat: 60.1699, lng: 25.0097 },
-  end: { lat: 60.1791, lng: 24.9506 },
+  waypoints: [
+    { lat: 60.1699, lng: 25.0097 },
+    { lat: 60.1791, lng: 24.9506 },
+  ],
   preset: "fastest_direct",
 };
 
@@ -107,7 +109,7 @@ describe("POST /route", () => {
     const res = await app.inject({
       method: "POST",
       url: "/route",
-      payload: { start: { lat: 60.1699, lng: 25.0097 } }, // missing end + preset
+      payload: { waypoints: [{ lat: 60.1699, lng: 25.0097 }] }, // only 1 waypoint, missing preset
     });
 
     expect(res.statusCode).toBe(400);

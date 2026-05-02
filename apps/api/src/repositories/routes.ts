@@ -3,6 +3,7 @@ import type {
   RouteProfilePreset,
   SavedRoute,
   UpdateRouteRequest,
+  Waypoint,
 } from "@routax/shared";
 import type { Pool } from "pg";
 
@@ -29,6 +30,7 @@ interface RouteRow {
   descent_m: number;
   elevation_profile: unknown;
   surface_profile: unknown;
+  waypoints_json: unknown;
   created_at: Date;
   updated_at: Date;
 }
@@ -70,10 +72,28 @@ function toSavedRoute(row: RouteRow): SavedRoute {
     descent: row.descent_m,
     elevationProfile: row.elevation_profile as SavedRoute["elevationProfile"],
     surfaceProfile: row.surface_profile as SavedRoute["surfaceProfile"],
+    waypoints: row.waypoints_json as Waypoint[],
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
 }
+
+const SELECT_COLS = `
+  id,
+  user_id,
+  name,
+  preset,
+  ST_AsGeoJSON(geometry::geometry) AS geometry_json,
+  profile,
+  distance_m,
+  duration_s,
+  ascent_m,
+  descent_m,
+  elevation_profile,
+  surface_profile,
+  waypoints_json,
+  created_at,
+  updated_at`;
 
 export class RouteRepository {
   constructor(private readonly pool: Pool) {}
@@ -81,25 +101,11 @@ export class RouteRepository {
   async create(userId: string, payload: CreateRouteRequest): Promise<SavedRoute> {
     const result = await this.pool.query<RouteRow>(
       `INSERT INTO routes (
-        user_id, name, preset, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile
+        user_id, name, preset, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile, waypoints_json
       ) VALUES (
-        $1, $2, $3, ST_GeomFromGeoJSON($4)::geography, $5::jsonb, $6, $7, $8, $9, $10::jsonb, $11::jsonb
+        $1, $2, $3, ST_GeomFromGeoJSON($4)::geography, $5::jsonb, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb
       )
-      RETURNING
-        id,
-        user_id,
-        name,
-        preset,
-        ST_AsGeoJSON(geometry::geometry) AS geometry_json,
-        profile,
-        distance_m,
-        duration_s,
-        ascent_m,
-        descent_m,
-        elevation_profile,
-        surface_profile,
-        created_at,
-        updated_at`,
+      RETURNING ${SELECT_COLS}`,
       [
         userId,
         payload.name,
@@ -112,6 +118,7 @@ export class RouteRepository {
         payload.descent,
         JSON.stringify(payload.elevationProfile),
         JSON.stringify(payload.surfaceProfile ?? []),
+        JSON.stringify(payload.waypoints ?? []),
       ],
     );
     const row = result.rows[0];
@@ -137,21 +144,7 @@ export class RouteRepository {
     values.push(limit + 1);
     const limitParam = `$${values.length}`;
     const result = await this.pool.query<RouteRow>(
-      `SELECT
-        id,
-        user_id,
-        name,
-        preset,
-        ST_AsGeoJSON(geometry::geometry) AS geometry_json,
-        profile,
-        distance_m,
-        duration_s,
-        ascent_m,
-        descent_m,
-        elevation_profile,
-        surface_profile,
-        created_at,
-        updated_at
+      `SELECT ${SELECT_COLS}
       FROM routes
       WHERE user_id = $1
       ${cursorSql}
@@ -175,21 +168,7 @@ export class RouteRepository {
 
   async get(userId: string, id: string): Promise<SavedRoute | null> {
     const result = await this.pool.query<RouteRow>(
-      `SELECT
-        id,
-        user_id,
-        name,
-        preset,
-        ST_AsGeoJSON(geometry::geometry) AS geometry_json,
-        profile,
-        distance_m,
-        duration_s,
-        ascent_m,
-        descent_m,
-        elevation_profile,
-        surface_profile,
-        created_at,
-        updated_at
+      `SELECT ${SELECT_COLS}
       FROM routes
       WHERE id = $1 AND user_id = $2`,
       [id, userId],
@@ -208,21 +187,7 @@ export class RouteRepository {
       SET name = $3,
           updated_at = now()
       WHERE id = $1 AND user_id = $2
-      RETURNING
-        id,
-        user_id,
-        name,
-        preset,
-        ST_AsGeoJSON(geometry::geometry) AS geometry_json,
-        profile,
-        distance_m,
-        duration_s,
-        ascent_m,
-        descent_m,
-        elevation_profile,
-        surface_profile,
-        created_at,
-        updated_at`,
+      RETURNING ${SELECT_COLS}`,
       [id, userId, payload.name],
     );
     const row = result.rows[0];
