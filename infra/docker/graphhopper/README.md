@@ -67,6 +67,48 @@ curl -X POST http://localhost:8989/route \
   }'
 ```
 
+## Indexed encoded values
+
+The graph indexes two encoded values:
+
+| Encoded value | Why |
+|---|---|
+| `average_slope` | Enables the `max_gradient` routing parameter (Phase 2+) |
+| `surface` | Per-segment surface type; drives the "Avoid gravel" preset (Task 05), polyline coloring (Task 08), and GPX import segment typing (Task 10) |
+
+### Surface controlled vocabulary
+
+The `surface` encoded value is normalised from raw OSM `surface=*` tags into
+8 stable classes:
+
+| Class | OSM tags |
+|---|---|
+| `asphalt` | `asphalt`, `concrete`, `paving_stones` |
+| `paved_rough` | `sett`, `cobblestone`, `bricks`, `concrete:plates` |
+| `compacted` | `compacted`, `fine_gravel`, `pebblestone` |
+| `gravel` | `gravel`, `dirt`, `ground`, `earth` |
+| `sand` | `sand`, `mud` |
+| `unpaved` | `unpaved` |
+| `wood` | `wood`, `metal_grid` |
+| `unknown` | missing tag or any unrecognised value |
+
+`unknown` is a first-class value, not an error — roughly half of Finnish
+forest tracks lack a `surface` tag in OSM.
+
+`smoothness` is not indexed. Its memory cost will be evaluated after the
+`surface`-only rebuild baseline is established.
+
+### Rebuild requirement
+
+`graph.encoded_values` is baked into the graph at import time. Adding an
+encoded value without rebuilding the graph causes GH to route against the old
+graph and return no surface details. Always force a rebuild after changing
+this list:
+
+```bash
+make osm-reimport -- --force
+```
+
 ## Custom model parameters (v0)
 
 `custom_models/v0-cycling.json` documents the three Routax profile parameters.
