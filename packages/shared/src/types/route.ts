@@ -5,11 +5,17 @@ export interface LatLng {
   lng: number;
 }
 
-export interface Waypoint {
-  id: string;
-  position: LatLng;
-  label?: string;
-}
+export const WaypointRoleSchema = z.enum(["start", "via", "finish"]);
+export type WaypointRole = z.infer<typeof WaypointRoleSchema>;
+
+export const WaypointSchema = z.object({
+  id: z.string(),
+  position: z.object({ lat: z.number(), lng: z.number() }),
+  role: WaypointRoleSchema,
+  label: z.string().optional(),
+});
+
+export type Waypoint = z.infer<typeof WaypointSchema>;
 
 export const RouteProfilePresetSchema = z.enum([
   "quiet_country_roads",
@@ -46,9 +52,13 @@ export const SurfaceClassSchema = z.enum([
 ]);
 export type SurfaceClass = z.infer<typeof SurfaceClassSchema>;
 
+export const RouteWaypointSchema = z.object({
+  lat: z.number(),
+  lng: z.number(),
+});
+
 export const RouteRequestSchema = z.object({
-  start: z.object({ lat: z.number(), lng: z.number() }),
-  end: z.object({ lat: z.number(), lng: z.number() }),
+  waypoints: z.array(RouteWaypointSchema).min(2),
   preset: RouteProfilePresetSchema,
   advancedOverrides: RoutingProfileSchema.partial().optional(),
 });
@@ -98,6 +108,7 @@ export const SavedRouteSchema = z.object({
   descent: z.number().int(),
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
+  waypoints: z.array(WaypointSchema).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -113,6 +124,7 @@ export const CreateRouteRequestSchema = z.object({
   descent: z.number().int(),
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
+  waypoints: z.array(WaypointSchema).default([]),
 });
 
 export const UpdateRouteRequestSchema = z.object({
