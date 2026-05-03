@@ -57,11 +57,28 @@ export const RouteWaypointSchema = z.object({
   lng: z.number(),
 });
 
-export const RouteRequestSchema = z.object({
+export const PointToPointRequestSchema = z.object({
+  mode: z.literal("point_to_point").optional().default("point_to_point"),
   waypoints: z.array(RouteWaypointSchema).min(2),
   preset: RouteProfilePresetSchema,
   advancedOverrides: RoutingProfileSchema.partial().optional(),
 });
+
+export type PointToPointRequest = z.infer<typeof PointToPointRequestSchema>;
+
+export const RoundTripRequestSchema = z.object({
+  mode: z.literal("round_trip"),
+  start: z.object({ lat: z.number(), lng: z.number() }),
+  targetDistanceKm: z.number().min(5).max(500),
+  directionBias: z.enum(["any", "north", "east", "south", "west"]).optional(),
+  preset: RouteProfilePresetSchema,
+  advancedOverrides: RoutingProfileSchema.partial().optional(),
+  seed: z.number().int().min(0).optional(),
+});
+
+export type RoundTripRequest = z.infer<typeof RoundTripRequestSchema>;
+
+export const RouteRequestSchema = z.union([PointToPointRequestSchema, RoundTripRequestSchema]);
 
 export type RouteRequest = z.infer<typeof RouteRequestSchema>;
 
@@ -76,9 +93,20 @@ export const RouteResultSchema = z.object({
   ascent: z.number(),
   descent: z.number(),
   surfaces: z.array(SurfaceClassSchema).default([]),
+  generatedWaypoints: z.array(WaypointSchema).optional(),
 });
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
+
+export const PlanningMetadataSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("round_trip"),
+    targetDistanceKm: z.number(),
+    directionBias: z.enum(["any", "north", "east", "south", "west"]).optional(),
+  }),
+]);
+
+export type PlanningMetadata = z.infer<typeof PlanningMetadataSchema>;
 
 export const RouteGeometrySchema = z
   .object({
@@ -109,6 +137,7 @@ export const SavedRouteSchema = z.object({
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
   waypoints: z.array(WaypointSchema).default([]),
+  planningMetadata: PlanningMetadataSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -125,6 +154,7 @@ export const CreateRouteRequestSchema = z.object({
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
   waypoints: z.array(WaypointSchema).default([]),
+  planningMetadata: PlanningMetadataSchema.optional(),
 });
 
 export const UpdateRouteRequestSchema = z.object({
