@@ -1,4 +1,4 @@
-import type { LatLng, RouteProfilePreset, RouteResult, RoutingProfile } from "@routax/shared";
+import type { RouteProfilePreset, RouteResult, RoutingProfile, Waypoint } from "@routax/shared";
 import { useEffect, useRef, useState } from "react";
 import { postRoute } from "../lib/api";
 
@@ -14,8 +14,7 @@ export interface UseRouteOptions {
 }
 
 export function useRoute(
-  start: LatLng | null,
-  end: LatLng | null,
+  waypoints: Waypoint[],
   preset: RouteProfilePreset,
   profile: RoutingProfile,
   options: UseRouteOptions = { resultOverride: null },
@@ -40,7 +39,7 @@ export function useRoute(
       return;
     }
 
-    if (!start || !end) {
+    if (waypoints.length < 2) {
       setFetched(null);
       setError(null);
       setIsLoading(false);
@@ -61,7 +60,11 @@ export function useRoute(
 
       try {
         const data = await postRoute(
-          { start, end, preset, advancedOverrides: profile },
+          {
+            waypoints: waypoints.map((w) => w.position),
+            preset,
+            advancedOverrides: profile,
+          },
           controller.signal,
         );
         setFetched(data);
@@ -81,7 +84,7 @@ export function useRoute(
         clearTimeout(timerRef.current);
       }
     };
-  }, [start, end, preset, profile, resultOverride]);
+  }, [waypoints, preset, profile, resultOverride]);
 
   const result = resultOverride ?? fetched;
   if (resultOverride) {

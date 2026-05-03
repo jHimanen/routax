@@ -94,14 +94,14 @@ check "web"        GET  "/"           200
 check "api/health" GET  "/api/health" 200
 check "api/route"  POST "/api/route"  200 \
   -H "Content-Type: application/json" \
-  -d '{"start":{"lat":60.1699,"lng":25.0097},"end":{"lat":60.1791,"lng":24.9506},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":1}}'
+  -d '{"waypoints":[{"lat":60.1699,"lng":25.0097},{"lat":60.1791,"lng":24.9506}],"preset":"fastest_direct"}'
 
 # Elevation and surface checks on Tampere→Jyväskylä — enough relief for non-zero ascent,
 # enough route variety for ≥2 distinct surface classes
 check_elevation "tampere-jyvaskyla" \
-  '{"start":{"lat":61.498,"lng":23.760},"end":{"lat":62.243,"lng":25.747},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":20}}'
+  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
 check_surfaces "tampere-jyvaskyla" \
-  '{"start":{"lat":61.498,"lng":23.760},"end":{"lat":62.243,"lng":25.747},"profile":{"avoidTraffic":0,"preferQuietSurfaces":0,"maxGradient":20}}'
+  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

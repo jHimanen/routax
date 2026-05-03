@@ -1,4 +1,4 @@
-import { RouteRequestSchema } from "@routax/shared";
+import { RouteRequestSchema, type RouteResult } from "@routax/shared";
 import * as Sentry from "@sentry/node";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
@@ -12,12 +12,24 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
       const body = request.body;
 
       request.log.info(
-        { userId: user.id, start: body.start, end: body.end, preset: body.preset },
+        { userId: user.id, waypoint_count: body.waypoints.length, preset: body.preset },
         "route request received",
       );
 
       const t0 = Date.now();
-      const result = await container.routing.planRoute(body);
+      let result: RouteResult;
+      try {
+        result = await container.routing.planRoute(body);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Surface segment-level routing failures as 422 so the UI gets the message.
+        if (msg.includes("unroutable")) {
+          const clientErr = new Error(msg) as Error & { statusCode: number };
+          clientErr.statusCode = 422;
+          throw clientErr;
+        }
+        throw err;
+      }
       request.log.info(
         { userId: user.id, upstreamMs: Date.now() - t0 },
         "graphhopper response received",
@@ -41,6 +53,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         properties: {
           preset: body.preset,
           has_advanced_overrides: body.advancedOverrides !== undefined,
+          waypoint_count: body.waypoints.length,
           distance_m: result.distance,
           ascent_m: result.ascent,
         },
