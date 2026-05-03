@@ -10,12 +10,14 @@ import {
   type RouteResult,
   type RoutingProfile,
   type SavedRoute,
+  type SurfaceClass,
   type Waypoint,
 } from "@routax/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute, getRoute, postRoute } from "../lib/api";
+import { SURFACE_PALETTE, buildSurfaceFeatureCollection } from "../lib/surfaces";
 import { RoutePanel } from "./RoutePanel";
 
 type PlannerMode = "point_to_point" | "round_trip";
@@ -115,6 +117,17 @@ const MARKER_COLORS: Record<Waypoint["role"], string> = {
   via: "#3b82f6",
 };
 
+// MapLibre paint expression: colors route segments by surface class.
+// Defined at module scope — derived entirely from the SURFACE_PALETTE constant.
+// Cast required: TypeScript cannot verify the dynamically-built tuple matches
+// MapLibre's strict ExpressionSpecification discriminated union.
+const SURFACE_PAINT_EXPRESSION = [
+  "match",
+  ["get", "surface"],
+  ...Object.entries(SURFACE_PALETTE).flat(),
+  "#3b82f6", // fallback: features without a surface property render solid blue
+] as unknown as maplibregl.ExpressionSpecification;
+
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
 
 interface RoutaxMapProps {
@@ -127,6 +140,8 @@ interface RoutaxMapProps {
   onWaypointMoved: (id: string, pos: LatLng) => void;
   onClickRoute: (lngLat: LatLng) => void;
   cursorMode: "crosshair" | "grab";
+  surfaces: SurfaceClass[];
+  surfaceMapViz: boolean;
 }
 
 function RoutaxMap({
@@ -139,6 +154,8 @@ function RoutaxMap({
   onWaypointMoved,
   onClickRoute,
   cursorMode,
+  surfaces,
+  surfaceMapViz,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -261,11 +278,8 @@ function RoutaxMap({
         [Math.max(...lngs), Math.max(...lats)],
       ];
 
-      const geoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
-        type: "Feature",
-        properties: {},
-        geometry: routeGeoJSON,
-      };
+      const activeSurfaces = surfaceMapViz && surfaces.length > 0 ? surfaces : [];
+      const geoJSON = buildSurfaceFeatureCollection(routeGeoJSON, activeSurfaces);
 
       const existing = map.getSource(SOURCE_ID);
       if (existing) {
@@ -278,7 +292,7 @@ function RoutaxMap({
           source: SOURCE_ID,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#3b82f6",
+            "line-color": SURFACE_PAINT_EXPRESSION,
             "line-width": 4,
             "line-opacity": 0.85,
           },
@@ -313,7 +327,7 @@ function RoutaxMap({
       if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     }
-  }, [routeGeoJSON, mapLoaded]);
+  }, [routeGeoJSON, mapLoaded, surfaces, surfaceMapViz]);
 
   // Elevation hover marker
   const HOVER_SOURCE = "routax-hover";
@@ -403,6 +417,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const savedRoutesUi = isReady && savedFlagOn;
   const gpxExport = isReady && flags.gpx_export === true;
   const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
+  const surfaceMapViz = isReady && flags.surface_visualization === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
@@ -666,6 +681,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onWaypointMoved={handleWaypointMoved}
         onClickRoute={handleClickRoute}
         cursorMode={cursorMode}
+        surfaces={result?.surfaces ?? []}
+        surfaceMapViz={surfaceMapViz}
       />
       <RoutePanel
         waypoints={waypoints}
@@ -689,6 +706,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         deepLinkLoading={deepLinkLoading}
         gpxExport={gpxExport}
         elevationProfileViz={elevationProfileViz}
+        surfaceMapViz={surfaceMapViz}
         onElevationHover={setHoverCoord}
         onAddVia={handleAddVia}
         onRemoveVia={handleRemoveVia}
