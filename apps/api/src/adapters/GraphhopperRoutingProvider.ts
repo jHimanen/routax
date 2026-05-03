@@ -1,9 +1,9 @@
 import {
   PRESET_DEFAULTS,
   type PointToPointRequest,
+  type RoundTripRequest,
   type RouteProfilePreset,
   type RouteResult,
-  type RoundTripRequest,
   type RoutingProvider,
   type SurfaceClass,
   type Waypoint,
@@ -162,14 +162,16 @@ const DIRECTION_HEADINGS: Record<string, number | undefined> = {
 };
 
 function sampleWaypointsFromGeometry(coords: [number, number][], viaCount: number): Waypoint[] {
+  const origin = coords[0];
+  if (!origin) throw new Error("Cannot sample waypoints from empty coordinate array");
   const startWp: Waypoint = {
     id: crypto.randomUUID(),
-    position: { lng: coords[0]![0], lat: coords[0]![1] },
+    position: { lng: origin[0], lat: origin[1] },
     role: "start",
   };
   const finishWp: Waypoint = {
     id: crypto.randomUUID(),
-    position: { lng: coords[0]![0], lat: coords[0]![1] },
+    position: { lng: origin[0], lat: origin[1] },
     role: "finish",
   };
 

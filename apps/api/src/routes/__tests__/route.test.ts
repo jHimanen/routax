@@ -166,8 +166,8 @@ describe("POST /route — round_trip mode", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json<RouteResult>();
     expect(body.generatedWaypoints).toHaveLength(3);
-    expect(body.generatedWaypoints![0]!.role).toBe("start");
-    expect(body.generatedWaypoints![2]!.role).toBe("finish");
+    expect(body.generatedWaypoints?.[0]?.role).toBe("start");
+    expect(body.generatedWaypoints?.[2]?.role).toBe("finish");
   });
 
   it("calls planRoundTrip not planRoute", async () => {

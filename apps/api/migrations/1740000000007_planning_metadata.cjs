@@ -1,6 +1,6 @@
 /** @type {import('node-pg-migrate').MigrationBuilder} */
 exports.up = (pgm) => {
-  pgm.sql(`ALTER TABLE routes ADD COLUMN planning_metadata_json JSONB DEFAULT NULL;`);
+  pgm.sql("ALTER TABLE routes ADD COLUMN planning_metadata_json JSONB DEFAULT NULL;");
 };
 
 /** @type {import('node-pg-migrate').MigrationBuilder} */
