@@ -415,3 +415,131 @@ describe("GraphhopperRoutingProvider", () => {
     });
   });
 });
+
+// ── planRoundTrip ─────────────────────────────────────────────────────────────
+
+const ROUND_TRIP_REQUEST = {
+  mode: "round_trip" as const,
+  start: { lat: 60.1699, lng: 25.0097 },
+  targetDistanceKm: 30,
+  preset: "fastest_direct" as const,
+};
+
+function makeRoundTripPath(coordCount = 100) {
+  const coords: [number, number, number][] = Array.from({ length: coordCount }, (_, i) => [
+    25.0097 + i * 0.001,
+    60.1699 + Math.sin(i * 0.1) * 0.01,
+    10 + i,
+  ]);
+  return {
+    distance: 30000,
+    time: 5400000,
+    ascend: 150,
+    descend: 150,
+    points: { type: "LineString", coordinates: coords },
+    details: { surface: [[0, coordCount - 1, "asphalt"] as [number, number, string]] },
+  };
+}
+
+describe("GraphhopperRoutingProvider — planRoundTrip", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("builds a GH request with algorithm: round_trip and correct distance", async () => {
+    mockFetchOk([makeRoundTripPath()]);
+    const provider = new GraphhopperRoutingProvider();
+    await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body.algorithm).toBe("round_trip");
+    expect(body["round_trip.distance"]).toBe(30000);
+    expect(body["round_trip.seed"]).toBe(0);
+    expect(body.heading).toBeUndefined();
+  });
+
+  it("passes seed when provided", async () => {
+    mockFetchOk([makeRoundTripPath()]);
+    const provider = new GraphhopperRoutingProvider();
+    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, seed: 5 });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body["round_trip.seed"]).toBe(5);
+  });
+
+  it("includes heading and heading_penalty for north bias", async () => {
+    mockFetchOk([makeRoundTripPath()]);
+    const provider = new GraphhopperRoutingProvider();
+    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, directionBias: "north" });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body.heading).toEqual([0]);
+    expect(body.heading_penalty).toBe(100);
+  });
+
+  it("omits heading fields for 'any' direction bias", async () => {
+    mockFetchOk([makeRoundTripPath()]);
+    const provider = new GraphhopperRoutingProvider();
+    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, directionBias: "any" });
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as Record<string, unknown>;
+    expect(body.heading).toBeUndefined();
+    expect(body.heading_penalty).toBeUndefined();
+  });
+
+  it("returns generatedWaypoints with 6 entries: start + 4 vias + finish", async () => {
+    mockFetchOk([makeRoundTripPath(100)]);
+    const provider = new GraphhopperRoutingProvider();
+    const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+
+    expect(result.generatedWaypoints).toHaveLength(6);
+    expect(result.generatedWaypoints![0]!.role).toBe("start");
+    expect(result.generatedWaypoints![1]!.role).toBe("via");
+    expect(result.generatedWaypoints![4]!.role).toBe("via");
+    expect(result.generatedWaypoints![5]!.role).toBe("finish");
+  });
+
+  it("start and finish waypoints share the same position", async () => {
+    mockFetchOk([makeRoundTripPath(100)]);
+    const provider = new GraphhopperRoutingProvider();
+    const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+
+    const first = result.generatedWaypoints![0]!;
+    const last = result.generatedWaypoints![5]!;
+    expect(first.position).toEqual(last.position);
+  });
+
+  it("throws on non-OK GraphHopper response", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => "Internal Server Error",
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
+    } as any);
+
+    const provider = new GraphhopperRoutingProvider();
+    await expect(provider.planRoundTrip(ROUND_TRIP_REQUEST)).rejects.toThrow("GraphHopper returned 500");
+  });
+
+  it.skipIf(!process.env.GRAPHHOPPER_URL)(
+    "integration: generates a round-trip loop near Helsinki",
+    async () => {
+      const provider = new GraphhopperRoutingProvider();
+      const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+
+      expect(result.distance).toBeGreaterThan(0);
+      expect(result.generatedWaypoints).toHaveLength(6);
+
+      // Last geometry coordinate should be close to start (within ~500m)
+      const lastCoord = result.geometry.coordinates.at(-1)!;
+      const dlng = lastCoord[0] - ROUND_TRIP_REQUEST.start.lng;
+      const dlat = lastCoord[1] - ROUND_TRIP_REQUEST.start.lat;
+      const approxMeters = Math.sqrt(dlng * dlng + dlat * dlat) * 111000;
+      expect(approxMeters).toBeLessThan(500);
+    },
+  );
+});

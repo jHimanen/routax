@@ -11,18 +11,33 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
       const user = await container.auth.requireUser(request);
       const body = request.body;
 
+      const isRoundTrip = body.mode === "round_trip";
+
       request.log.info(
-        { userId: user.id, waypoint_count: body.waypoints.length, preset: body.preset },
+        {
+          userId: user.id,
+          mode: body.mode,
+          ...(isRoundTrip
+            ? { targetDistanceKm: body.targetDistanceKm }
+            : { waypoint_count: body.waypoints.length }),
+          preset: body.preset,
+        },
         "route request received",
       );
 
       const t0 = Date.now();
       let result: RouteResult;
       try {
-        result = await container.routing.planRoute(body);
+        if (isRoundTrip) {
+          if (!container.routing.planRoundTrip) {
+            throw new Error("Round-trip routing not supported");
+          }
+          result = await container.routing.planRoundTrip(body);
+        } else {
+          result = await container.routing.planRoute(body);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        // Surface segment-level routing failures as 422 so the UI gets the message.
         if (msg.includes("unroutable")) {
           const clientErr = new Error(msg) as Error & { statusCode: number };
           clientErr.statusCode = 422;
@@ -30,6 +45,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         }
         throw err;
       }
+
       request.log.info(
         { userId: user.id, upstreamMs: Date.now() - t0 },
         "graphhopper response received",
@@ -39,6 +55,7 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         category: "route",
         message: "route planned",
         data: {
+          mode: body.mode,
           preset: body.preset,
           advancedOverrides: body.advancedOverrides ?? null,
           distanceM: result.distance,
@@ -47,17 +64,30 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         level: "info",
       });
 
-      await container.analytics.track({
-        name: "route_planned",
-        userId: user.id,
-        properties: {
-          preset: body.preset,
-          has_advanced_overrides: body.advancedOverrides !== undefined,
-          waypoint_count: body.waypoints.length,
-          distance_m: result.distance,
-          ascent_m: result.ascent,
-        },
-      });
+      if (isRoundTrip) {
+        await container.analytics.track({
+          name: (body.seed ?? 0) > 0 ? "round_trip_regenerated" : "round_trip_generated",
+          userId: user.id,
+          properties: {
+            preset: body.preset,
+            targetDistanceKm: body.targetDistanceKm,
+            seed: body.seed ?? 0,
+            distance_m: result.distance,
+          },
+        });
+      } else {
+        await container.analytics.track({
+          name: "route_planned",
+          userId: user.id,
+          properties: {
+            preset: body.preset,
+            has_advanced_overrides: body.advancedOverrides !== undefined,
+            waypoint_count: body.waypoints.length,
+            distance_m: result.distance,
+            ascent_m: result.ascent,
+          },
+        });
+      }
 
       return result;
     });

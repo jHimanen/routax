@@ -1,10 +1,12 @@
 import {
   PRESET_DEFAULTS,
+  type PointToPointRequest,
   type RouteProfilePreset,
-  type RouteRequest,
   type RouteResult,
+  type RoundTripRequest,
   type RoutingProvider,
   type SurfaceClass,
+  type Waypoint,
 } from "@routax/shared";
 
 interface GhResponse {
@@ -138,11 +140,10 @@ export function buildCustomModel(
   };
 }
 
-function resolveProfile(request: RouteRequest): {
-  avoidTraffic: number;
-  preferQuietSurfaces: number;
-  maxGradient: number;
-} {
+function resolveProfile(request: {
+  preset: RouteProfilePreset;
+  advancedOverrides?: { avoidTraffic?: number; preferQuietSurfaces?: number; maxGradient?: number };
+}): { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number } {
   const defaults = PRESET_DEFAULTS[request.preset];
   const overrides = request.advancedOverrides ?? {};
   return {
@@ -150,6 +151,41 @@ function resolveProfile(request: RouteRequest): {
     preferQuietSurfaces: overrides.preferQuietSurfaces ?? defaults.preferQuietSurfaces,
     maxGradient: overrides.maxGradient ?? defaults.maxGradient,
   };
+}
+
+const DIRECTION_HEADINGS: Record<string, number | undefined> = {
+  any: undefined,
+  north: 0,
+  east: 90,
+  south: 180,
+  west: 270,
+};
+
+function sampleWaypointsFromGeometry(coords: [number, number][], viaCount: number): Waypoint[] {
+  const startWp: Waypoint = {
+    id: crypto.randomUUID(),
+    position: { lng: coords[0]![0], lat: coords[0]![1] },
+    role: "start",
+  };
+  const finishWp: Waypoint = {
+    id: crypto.randomUUID(),
+    position: { lng: coords[0]![0], lat: coords[0]![1] },
+    role: "finish",
+  };
+
+  const viaWaypoints: Waypoint[] = [];
+  for (let i = 1; i <= viaCount; i++) {
+    const idx = Math.floor((coords.length * i) / (viaCount + 1));
+    const coord = coords[idx];
+    if (!coord) continue;
+    viaWaypoints.push({
+      id: crypto.randomUUID(),
+      position: { lng: coord[0], lat: coord[1] },
+      role: "via",
+    });
+  }
+
+  return [startWp, ...viaWaypoints, finishWp];
 }
 
 export function stitchRouteLegs(legs: RouteResult[]): RouteResult {
@@ -262,7 +298,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
     };
   }
 
-  async planRoute(request: RouteRequest): Promise<RouteResult> {
+  async planRoute(request: PointToPointRequest): Promise<RouteResult> {
     const profile = resolveProfile(request);
     const pts = request.waypoints;
 
@@ -278,5 +314,72 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
     );
 
     return stitchRouteLegs(legResults);
+  }
+
+  async planRoundTrip(request: RoundTripRequest): Promise<RouteResult> {
+    const profile = resolveProfile(request);
+    const heading = DIRECTION_HEADINGS[request.directionBias ?? "any"];
+
+    const body: Record<string, unknown> = {
+      points: [[request.start.lng, request.start.lat]],
+      profile: "bike",
+      elevation: true,
+      points_encoded: false,
+      "ch.disable": true,
+      algorithm: "round_trip",
+      "round_trip.distance": request.targetDistanceKm * 1000,
+      "round_trip.seed": request.seed ?? 0,
+      custom_model: buildCustomModel(profile, request.preset),
+      details: ["surface"],
+    };
+
+    if (heading !== undefined) {
+      body.heading = [heading];
+      body.heading_penalty = 100;
+    }
+
+    const response = await fetch(`${this.baseUrl}/route`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`GraphHopper returned ${response.status}: ${text}`);
+    }
+
+    const data = (await response.json()) as GhResponse;
+    const path = data.paths[0];
+
+    if (!path) {
+      throw new Error("GraphHopper returned no paths");
+    }
+
+    const coords3d = path.points.coordinates;
+    const coordinates: [number, number][] = coords3d.map(([lng, lat]) => [lng, lat]);
+    const elevationProfile: number[] = coords3d.map(([, , ele]) => ele);
+
+    if (elevationProfile.length !== coordinates.length) {
+      throw new Error(
+        `GH elevation/coordinate length mismatch: ${elevationProfile.length} vs ${coordinates.length}`,
+      );
+    }
+
+    const surfaceRanges = path.details?.surface ?? [];
+    const surfaces = parseSurfaceDetails(surfaceRanges, coordinates.length - 1);
+
+    const generatedWaypoints = sampleWaypointsFromGeometry(coordinates, 4);
+
+    return {
+      distance: path.distance,
+      duration: Math.round(path.time / 1000),
+      geometry: { type: "LineString", coordinates },
+      elevationProfile,
+      ascent: path.ascend,
+      descent: path.descend,
+      surfaces,
+      generatedWaypoints,
+    };
   }
 }
