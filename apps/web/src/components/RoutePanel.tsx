@@ -2,6 +2,7 @@
 
 import {
   PRESET_METADATA,
+  type PlanningMetadata,
   type RouteProfilePreset,
   type RouteResult,
   type RoutingProfile,
@@ -51,6 +52,17 @@ interface RoutePanelProps {
   onRemoveVia: (id: string) => void;
   onMoveViaUp: (id: string) => void;
   onMoveViaDown: (id: string) => void;
+  plannerMode: "point_to_point" | "round_trip";
+  onPlannerModeChange: (m: "point_to_point" | "round_trip") => void;
+  targetDistanceKm: number;
+  onTargetDistanceChange: (v: number) => void;
+  directionBias: "any" | "north" | "east" | "south" | "west";
+  onDirectionBiasChange: (v: "any" | "north" | "east" | "south" | "west") => void;
+  onGenerate: () => void;
+  onRegenerate: () => void;
+  isGenerating: boolean;
+  hasRoundTripStart: boolean;
+  planningMetadata: PlanningMetadata | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -102,6 +114,17 @@ export function RoutePanel({
   onRemoveVia,
   onMoveViaUp,
   onMoveViaDown,
+  plannerMode,
+  onPlannerModeChange,
+  targetDistanceKm,
+  onTargetDistanceChange,
+  directionBias,
+  onDirectionBiasChange,
+  onGenerate,
+  onRegenerate,
+  isGenerating,
+  hasRoundTripStart,
+  planningMetadata,
 }: RoutePanelProps): React.JSX.Element {
   const hasStart = waypoints.length >= 1;
   const hasFinish = waypoints.length >= 2;
@@ -261,8 +284,89 @@ export function RoutePanel({
     return `Stop ${viaIdx}`;
   }
 
+  const hasGeneratedOnce = plannerMode === "round_trip" && waypoints.length >= 2;
+
   return (
     <aside className={`route-panel${deepLinkLoading ? " route-panel--deeplink-load" : ""}`}>
+      <div className="route-panel-mode-toggle">
+        <button
+          type="button"
+          className={`route-panel-mode-btn${plannerMode === "point_to_point" ? " route-panel-mode-btn--active" : ""}`}
+          onClick={() => onPlannerModeChange("point_to_point")}
+          disabled={deepLinkLoading}
+        >
+          Point to point
+        </button>
+        <button
+          type="button"
+          className={`route-panel-mode-btn${plannerMode === "round_trip" ? " route-panel-mode-btn--active" : ""}`}
+          onClick={() => onPlannerModeChange("round_trip")}
+          disabled={deepLinkLoading}
+        >
+          Round trip
+        </button>
+      </div>
+
+      {plannerMode === "round_trip" && (
+        <div className="route-panel-roundtrip">
+          <p className="route-panel-roundtrip-hint">
+            {hasRoundTripStart ? "Start placed" : "Click map to place start"}
+          </p>
+          <label className="route-panel-label" htmlFor="rt-distance">
+            Target distance (km)
+          </label>
+          <input
+            id="rt-distance"
+            type="number"
+            min={5}
+            max={500}
+            step={5}
+            value={targetDistanceKm}
+            onChange={(e) => onTargetDistanceChange(Number(e.target.value))}
+            disabled={isGenerating}
+            className="route-panel-rt-input"
+          />
+          <label className="route-panel-label" htmlFor="rt-bias">
+            Direction bias
+          </label>
+          <select
+            id="rt-bias"
+            value={directionBias}
+            onChange={(e) =>
+              onDirectionBiasChange(e.target.value as "any" | "north" | "east" | "south" | "west")
+            }
+            disabled={isGenerating}
+            className="route-panel-rt-select"
+          >
+            <option value="any">Any</option>
+            <option value="north">North</option>
+            <option value="east">East</option>
+            <option value="south">South</option>
+            <option value="west">West</option>
+          </select>
+          <div className="route-panel-rt-actions">
+            <button
+              type="button"
+              className="route-panel-rt-generate"
+              onClick={onGenerate}
+              disabled={!hasRoundTripStart || isGenerating}
+            >
+              {isGenerating ? "Generating…" : "Generate loop"}
+            </button>
+            {hasGeneratedOnce && (
+              <button
+                type="button"
+                className="route-panel-rt-regenerate"
+                onClick={onRegenerate}
+                disabled={isGenerating}
+              >
+                Regenerate
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {deepLinkLoading && (
         <p className="route-panel-deeplink-status" aria-live="polite">
           Loading route…
@@ -375,8 +479,8 @@ export function RoutePanel({
         </ul>
       )}
 
-      {/* Add stop button — visible once both start and finish are placed */}
-      {hasFinish && (
+      {/* Add stop button — visible in point-to-point mode once both endpoints are placed */}
+      {plannerMode === "point_to_point" && hasFinish && (
         <button
           type="button"
           className="route-panel-add-via"
@@ -449,7 +553,13 @@ export function RoutePanel({
         </div>
       </details>
 
-      {hint && <p className="route-panel-hint">{hint}</p>}
+      {plannerMode === "point_to_point" && hint && <p className="route-panel-hint">{hint}</p>}
+
+      {result && planningMetadata?.mode === "round_trip" && (
+        <p className="route-panel-rt-pill">
+          Generated as ~{planningMetadata.targetDistanceKm} km loop
+        </p>
+      )}
 
       {result && (
         <div className="route-panel-result">
