@@ -31,8 +31,7 @@ function haversineKm(a: [number, number], b: [number, number]): number {
   const sinLat = Math.sin(dLat / 2);
   const sinLng = Math.sin(dLng / 2);
   const h =
-    sinLat * sinLat +
-    Math.cos(a[1] * DEG_TO_RAD) * Math.cos(b[1] * DEG_TO_RAD) * sinLng * sinLng;
+    sinLat * sinLat + Math.cos(a[1] * DEG_TO_RAD) * Math.cos(b[1] * DEG_TO_RAD) * sinLng * sinLng;
   return 2 * EARTH_KM * Math.asin(Math.sqrt(h));
 }
 

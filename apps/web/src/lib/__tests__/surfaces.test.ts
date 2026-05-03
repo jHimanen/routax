@@ -38,12 +38,7 @@ describe("computeSurfaceComposition", () => {
   });
 
   it("percentages sum to approximately 100", () => {
-    const result = computeSurfaceComposition(COORDS, [
-      "asphalt",
-      "gravel",
-      "compacted",
-      "unknown",
-    ]);
+    const result = computeSurfaceComposition(COORDS, ["asphalt", "gravel", "compacted", "unknown"]);
     const sum = result.reduce((acc, s) => acc + s.percentage, 0);
     // rounding may put it at 99-101
     expect(sum).toBeGreaterThanOrEqual(98);
@@ -63,24 +58,14 @@ describe("buildSurfaceFeatureCollection", () => {
 
   it("returns one feature per contiguous run", () => {
     // 4 edges: [asphalt, asphalt, gravel, gravel]
-    const fc = buildSurfaceFeatureCollection(geometry, [
-      "asphalt",
-      "asphalt",
-      "gravel",
-      "gravel",
-    ]);
+    const fc = buildSurfaceFeatureCollection(geometry, ["asphalt", "asphalt", "gravel", "gravel"]);
     expect(fc.features).toHaveLength(2);
     expect(fc.features[0]?.properties?.surface).toBe("asphalt");
     expect(fc.features[1]?.properties?.surface).toBe("gravel");
   });
 
   it("asphalt run has correct coordinate count (3 coords for 2 edges)", () => {
-    const fc = buildSurfaceFeatureCollection(geometry, [
-      "asphalt",
-      "asphalt",
-      "gravel",
-      "gravel",
-    ]);
+    const fc = buildSurfaceFeatureCollection(geometry, ["asphalt", "asphalt", "gravel", "gravel"]);
     // edges 0-1 → coords[0..2] = 3 points
     expect(fc.features[0]?.geometry.coordinates).toHaveLength(3);
     // edges 2-3 → coords[2..4] = 3 points
@@ -88,35 +73,20 @@ describe("buildSurfaceFeatureCollection", () => {
   });
 
   it("runs share the boundary coordinate (no gap)", () => {
-    const fc = buildSurfaceFeatureCollection(geometry, [
-      "asphalt",
-      "asphalt",
-      "gravel",
-      "gravel",
-    ]);
+    const fc = buildSurfaceFeatureCollection(geometry, ["asphalt", "asphalt", "gravel", "gravel"]);
     const lastOfFirst = fc.features[0]?.geometry.coordinates.at(-1);
     const firstOfSecond = fc.features[1]?.geometry.coordinates[0];
     expect(lastOfFirst).toEqual(firstOfSecond);
   });
 
   it("handles all-same surface as a single feature", () => {
-    const fc = buildSurfaceFeatureCollection(geometry, [
-      "gravel",
-      "gravel",
-      "gravel",
-      "gravel",
-    ]);
+    const fc = buildSurfaceFeatureCollection(geometry, ["gravel", "gravel", "gravel", "gravel"]);
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0]?.properties?.surface).toBe("gravel");
   });
 
   it("handles alternating surfaces (one feature per edge)", () => {
-    const fc = buildSurfaceFeatureCollection(geometry, [
-      "asphalt",
-      "gravel",
-      "asphalt",
-      "gravel",
-    ]);
+    const fc = buildSurfaceFeatureCollection(geometry, ["asphalt", "gravel", "asphalt", "gravel"]);
     expect(fc.features).toHaveLength(4);
   });
 });

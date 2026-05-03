@@ -13,6 +13,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
 import { buildRouteUrl } from "../lib/url";
 import { ElevationProfile } from "./ElevationProfile";
+import { SurfaceLegend } from "./SurfaceLegend";
 
 const PRESET_ORDER: RouteProfilePreset[] = [
   "fastest_direct",
@@ -46,6 +47,8 @@ interface RoutePanelProps {
   gpxExport: boolean;
   /** When true, render the elevation profile chart. */
   elevationProfileViz: boolean;
+  /** When true, render the surface composition legend. */
+  surfaceMapViz: boolean;
   /** Called with the map coordinate under the hovered chart position, or null on leave. */
   onElevationHover: (coord: [number, number] | null) => void;
   onAddVia: () => void;
@@ -109,6 +112,7 @@ export function RoutePanel({
   deepLinkLoading,
   gpxExport,
   elevationProfileViz,
+  surfaceMapViz,
   onElevationHover,
   onAddVia,
   onRemoveVia,
@@ -568,6 +572,10 @@ export function RoutePanel({
           {result.ascent !== undefined && <span>↑ {result.ascent.toFixed(0)} m</span>}
           {result.descent !== undefined && <span>↓ {result.descent.toFixed(0)} m</span>}
         </div>
+      )}
+
+      {surfaceMapViz && result && (
+        <SurfaceLegend surfaces={result.surfaces} geometry={result.geometry} />
       )}
 
       {elevationProfileViz && result && result.elevationProfile.length >= 2 && (
