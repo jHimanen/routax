@@ -27,6 +27,15 @@ const STUB_RESULT: RouteResult = {
   surfaces: ["asphalt"],
 };
 
+const ROUND_TRIP_STUB: RouteResult = {
+  ...STUB_RESULT,
+  generatedWaypoints: [
+    { id: "w1", position: { lat: 60.1699, lng: 25.0097 }, role: "start" },
+    { id: "w2", position: { lat: 60.18, lng: 25.02 }, role: "via" },
+    { id: "w3", position: { lat: 60.1699, lng: 25.0097 }, role: "finish" },
+  ],
+};
+
 function makeContainer(overrides?: Partial<Container>): Container {
   return {
     auth: {
@@ -39,7 +48,7 @@ function makeContainer(overrides?: Partial<Container>): Container {
         email: "test@routax.local",
       }),
     },
-    routing: { planRoute: async () => STUB_RESULT },
+    routing: { planRoute: async () => STUB_RESULT, planRoundTrip: async () => ROUND_TRIP_STUB },
     payment: {
       getSubscriptionStatus: async () => ({ tier: "free" }),
       createCheckoutSession: async () => ({ url: "https://billing.routax.local" }),
@@ -137,6 +146,78 @@ describe("POST /route", () => {
     expect(res.statusCode).toBe(500);
     const body = res.json<{ error: { code: string } }>();
     expect(body.error.code).toBe("INTERNAL_ERROR");
+  });
+});
+
+describe("POST /route — round_trip mode", () => {
+  it("returns 200 with generatedWaypoints for a valid round-trip payload", async () => {
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "POST",
+      url: "/route",
+      payload: {
+        mode: "round_trip",
+        start: { lat: 60.1699, lng: 25.0097 },
+        targetDistanceKm: 30,
+        preset: "fastest_direct",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json<RouteResult>();
+    expect(body.generatedWaypoints).toHaveLength(3);
+    expect(body.generatedWaypoints?.[0]?.role).toBe("start");
+    expect(body.generatedWaypoints?.[2]?.role).toBe("finish");
+  });
+
+  it("calls planRoundTrip not planRoute", async () => {
+    const planRoute = vi.fn(async () => STUB_RESULT);
+    const planRoundTrip = vi.fn(async () => ROUND_TRIP_STUB);
+    const app = buildApp(makeContainer({ routing: { planRoute, planRoundTrip } }));
+    await app.inject({
+      method: "POST",
+      url: "/route",
+      payload: {
+        mode: "round_trip",
+        start: { lat: 60.1699, lng: 25.0097 },
+        targetDistanceKm: 30,
+        preset: "fastest_direct",
+      },
+    });
+
+    expect(planRoundTrip).toHaveBeenCalledOnce();
+    expect(planRoute).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when targetDistanceKm is below minimum", async () => {
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "POST",
+      url: "/route",
+      payload: {
+        mode: "round_trip",
+        start: { lat: 60.1699, lng: 25.0097 },
+        targetDistanceKm: 2,
+        preset: "fastest_direct",
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 when start is missing", async () => {
+    const app = buildApp(makeContainer());
+    const res = await app.inject({
+      method: "POST",
+      url: "/route",
+      payload: {
+        mode: "round_trip",
+        targetDistanceKm: 30,
+        preset: "fastest_direct",
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
   });
 });
 

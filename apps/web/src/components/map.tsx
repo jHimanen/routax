@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {
   type LatLng,
   PRESET_DEFAULTS,
+  type PlanningMetadata,
   type RouteProfilePreset,
   type RouteResult,
   type RoutingProfile,
@@ -14,8 +15,11 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
-import { createRoute, getRoute } from "../lib/api";
+import { createRoute, getRoute, postRoute } from "../lib/api";
 import { RoutePanel } from "./RoutePanel";
+
+type PlannerMode = "point_to_point" | "round_trip";
+type DirectionBias = "any" | "north" | "east" | "south" | "west";
 
 function routeResultFromSaved(saved: SavedRoute): RouteResult {
   return {
@@ -122,6 +126,7 @@ interface RoutaxMapProps {
   hoverCoord: [number, number] | null;
   onWaypointMoved: (id: string, pos: LatLng) => void;
   onClickRoute: (lngLat: LatLng) => void;
+  cursorMode: "crosshair" | "grab";
 }
 
 function RoutaxMap({
@@ -133,6 +138,7 @@ function RoutaxMap({
   hoverCoord,
   onWaypointMoved,
   onClickRoute,
+  cursorMode,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -197,8 +203,8 @@ function RoutaxMap({
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();
     if (!canvas) return;
-    canvas.style.cursor = waypoints.length < 2 ? "crosshair" : "grab";
-  }, [waypoints.length]);
+    canvas.style.cursor = cursorMode;
+  }, [cursorMode]);
 
   // Markers — keep a stable map from id → Marker
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
@@ -385,6 +391,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const [hoverCoord, setHoverCoord] = useState<[number, number] | null>(null);
 
+  const [plannerMode, setPlannerMode] = useState<PlannerMode>("point_to_point");
+  const [targetDistanceKm, setTargetDistanceKm] = useState(50);
+  const [directionBias, setDirectionBias] = useState<DirectionBias>("any");
+  const [roundTripSeed, setRoundTripSeed] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [planningMetadata, setPlanningMetadata] = useState<PlanningMetadata | null>(null);
+
   const { isReady, flags } = useFeatureFlags();
   const savedFlagOn = flags.saved_routes_ui === true;
   const savedRoutesUi = isReady && savedFlagOn;
@@ -423,6 +436,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       profile: { ...saved.profile },
     });
     setRouteModified(false);
+    setPlanningMetadata(saved.planningMetadata ?? null);
   }, []);
 
   useEffect(() => {
@@ -464,6 +478,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setResultOverride(null);
     setLoadBaseline(null);
     setRouteModified(true);
+    setPlanningMetadata(null);
   }, [waypoints, preset, profile, resultOverride, loadBaseline]);
 
   const handleSave = useCallback(
@@ -481,10 +496,11 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         elevationProfile: result.elevationProfile,
         surfaceProfile: result.surfaces,
         waypoints,
+        planningMetadata: planningMetadata ?? undefined,
       });
       return created.id;
     },
-    [result, preset, profile, waypoints],
+    [result, preset, profile, waypoints, planningMetadata],
   );
 
   const handleReset = useCallback(() => {
@@ -492,11 +508,20 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setResultOverride(null);
     setLoadBaseline(null);
     setRouteModified(false);
+    setPlanningMetadata(null);
+    setRoundTripSeed(0);
   }, []);
 
   const handleMapClick = useCallback(
     (lngLat: LatLng) => {
       if (initialRouteId && !deepLinkResolved) return;
+
+      if (plannerMode === "round_trip") {
+        // Any click places or replaces the single start point
+        setWaypoints([{ id: makeWaypointId(), position: lngLat, role: "start" }]);
+        return;
+      }
+
       setWaypoints((prev) => {
         if (prev.length === 0) {
           return [{ id: makeWaypointId(), position: lngLat, role: "start" }];
@@ -508,7 +533,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         return prev;
       });
     },
-    [initialRouteId, deepLinkResolved],
+    [initialRouteId, deepLinkResolved, plannerMode],
   );
 
   const handleAddVia = useCallback(() => {
@@ -567,6 +592,45 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, position: pos } : w)));
   }, []);
 
+  const handleGenerateRoundTrip = useCallback(
+    async (regenerate: boolean) => {
+      const startWp = waypoints.find((w) => w.role === "start");
+      if (!startWp) return;
+
+      const nextSeed = regenerate ? roundTripSeed + 1 : 0;
+      if (regenerate) setRoundTripSeed(nextSeed);
+
+      setIsGenerating(true);
+      try {
+        const res = await postRoute({
+          mode: "round_trip",
+          start: startWp.position,
+          targetDistanceKm,
+          directionBias: directionBias !== "any" ? directionBias : undefined,
+          preset,
+          advancedOverrides: profile,
+          seed: nextSeed,
+        });
+
+        const gw = res.generatedWaypoints ?? [];
+        if (gw.length < 2) return;
+
+        setWaypoints(gw);
+        setResultOverride(res);
+        setLoadBaseline({ waypoints: gw, preset, profile });
+        setRouteModified(false);
+        setPlanningMetadata({
+          mode: "round_trip",
+          targetDistanceKm,
+          directionBias: directionBias !== "any" ? directionBias : undefined,
+        });
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [waypoints, roundTripSeed, targetDistanceKm, directionBias, preset, profile],
+  );
+
   const handleClickRoute = useCallback((lngLat: LatLng) => {
     setWaypoints((prev) => {
       if (prev.length < 2) return prev;
@@ -587,6 +651,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     return () => window.removeEventListener("keydown", handler);
   }, [handleReset]);
 
+  const cursorMode =
+    plannerMode === "round_trip" ? "crosshair" : waypoints.length < 2 ? "crosshair" : "grab";
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <RoutaxMap
@@ -598,6 +665,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         hoverCoord={hoverCoord}
         onWaypointMoved={handleWaypointMoved}
         onClickRoute={handleClickRoute}
+        cursorMode={cursorMode}
       />
       <RoutePanel
         waypoints={waypoints}
@@ -626,6 +694,22 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onRemoveVia={handleRemoveVia}
         onMoveViaUp={handleMoveViaUp}
         onMoveViaDown={handleMoveViaDown}
+        plannerMode={plannerMode}
+        onPlannerModeChange={(m) => {
+          setPlannerMode(m);
+          handleReset();
+        }}
+        targetDistanceKm={targetDistanceKm}
+        onTargetDistanceChange={setTargetDistanceKm}
+        directionBias={directionBias}
+        onDirectionBiasChange={setDirectionBias}
+        onGenerate={() => void handleGenerateRoundTrip(false)}
+        onRegenerate={() => void handleGenerateRoundTrip(true)}
+        isGenerating={isGenerating}
+        hasRoundTripStart={
+          plannerMode === "round_trip" && waypoints.some((w) => w.role === "start")
+        }
+        planningMetadata={planningMetadata}
       />
     </div>
   );

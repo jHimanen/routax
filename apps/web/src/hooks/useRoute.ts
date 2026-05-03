@@ -61,6 +61,7 @@ export function useRoute(
       try {
         const data = await postRoute(
           {
+            mode: "point_to_point",
             waypoints: waypoints.map((w) => w.position),
             preset,
             advancedOverrides: profile,
