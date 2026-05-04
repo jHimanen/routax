@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GraphhopperRoutingProvider,
   buildCustomModel,
+  normalizeManeuver,
   normalizeSurface,
   parseSurfaceDetails,
+  parseInstructions,
   stitchRouteLegs,
 } from "../GraphhopperRoutingProvider.js";
 
@@ -234,6 +236,24 @@ describe("GraphhopperRoutingProvider", () => {
       },
       elevationProfile: [10, 20, 15],
       surfaces: ["asphalt", "gravel"],
+      cueSheet: [
+        {
+          index: 0,
+          distanceFromStartMeters: 0,
+          distanceFromPreviousMeters: 0,
+          maneuver: "continue",
+          text: "Head north",
+          coordinate: [25.0, 60.0],
+        },
+        {
+          index: 1,
+          distanceFromStartMeters: 500,
+          distanceFromPreviousMeters: 500,
+          maneuver: "turn_right",
+          text: "Turn right",
+          coordinate: [24.9, 60.1],
+        },
+      ],
     };
 
     const legB: RouteResult = {
@@ -251,6 +271,16 @@ describe("GraphhopperRoutingProvider", () => {
       },
       elevationProfile: [15, 22, 18],
       surfaces: ["compacted", "asphalt"],
+      cueSheet: [
+        {
+          index: 0,
+          distanceFromStartMeters: 0,
+          distanceFromPreviousMeters: 0,
+          maneuver: "continue",
+          text: "Head west",
+          coordinate: [24.8, 60.2],
+        },
+      ],
     };
 
     it("returns a single leg unchanged", () => {
@@ -293,6 +323,94 @@ describe("GraphhopperRoutingProvider", () => {
 
     it("throws on empty legs array", () => {
       expect(() => stitchRouteLegs([])).toThrow("No legs to stitch");
+    });
+
+    it("offsets cue distanceFromStartMeters by previous leg distance", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      // legB cue index 0 had distanceFromStartMeters=0; after stitching += legA.distance (1000)
+      const legBCue = stitched.cueSheet.find((c) => c.text === "Head west");
+      expect(legBCue).toBeDefined();
+      expect(legBCue?.distanceFromStartMeters).toBe(1000);
+    });
+
+    it("re-sequences cue index across legs", () => {
+      const stitched = stitchRouteLegs([legA, legB]);
+      const indices = stitched.cueSheet.map((c) => c.index);
+      expect(indices).toEqual([0, 1, 2]);
+    });
+  });
+
+  describe("normalizeManeuver", () => {
+    it("maps standard turn signs", () => {
+      expect(normalizeManeuver(-2)).toBe("turn_left");
+      expect(normalizeManeuver(2)).toBe("turn_right");
+      expect(normalizeManeuver(-1)).toBe("slight_left");
+      expect(normalizeManeuver(1)).toBe("slight_right");
+      expect(normalizeManeuver(-3)).toBe("sharp_left");
+      expect(normalizeManeuver(3)).toBe("sharp_right");
+    });
+
+    it("maps special signs", () => {
+      expect(normalizeManeuver(0)).toBe("continue");
+      expect(normalizeManeuver(4)).toBe("finish");
+      expect(normalizeManeuver(5)).toBe("via_point");
+      expect(normalizeManeuver(6)).toBe("roundabout_right");
+      expect(normalizeManeuver(-6)).toBe("roundabout_left");
+      expect(normalizeManeuver(7)).toBe("keep_right");
+      expect(normalizeManeuver(-7)).toBe("keep_left");
+    });
+
+    it("returns continue for unknown signs", () => {
+      expect(normalizeManeuver(99)).toBe("continue");
+      expect(normalizeManeuver(-99)).toBe("continue");
+    });
+  });
+
+  describe("parseInstructions", () => {
+    const coords: [number, number][] = [
+      [25.0, 60.0],
+      [24.9, 60.1],
+      [24.8, 60.2],
+    ];
+
+    it("returns empty array for empty instructions", () => {
+      expect(parseInstructions([], coords)).toEqual([]);
+    });
+
+    it("parses two instructions with correct distances", () => {
+      const instrs = [
+        { distance: 500, sign: 0, interval: [0, 1] as [number, number], text: "Head north", street_name: "Mannerheimintie" },
+        { distance: 0, sign: 4, interval: [1, 2] as [number, number], text: "Arrive at destination", street_name: "" },
+      ];
+      const cues = parseInstructions(instrs, coords);
+
+      expect(cues).toHaveLength(2);
+      expect(cues[0]?.distanceFromStartMeters).toBe(0);
+      expect(cues[0]?.distanceFromPreviousMeters).toBe(0);
+      expect(cues[0]?.maneuver).toBe("continue");
+      expect(cues[0]?.streetName).toBe("Mannerheimintie");
+      expect(cues[0]?.coordinate).toEqual([25.0, 60.0]);
+
+      expect(cues[1]?.distanceFromStartMeters).toBe(500);
+      expect(cues[1]?.distanceFromPreviousMeters).toBe(500);
+      expect(cues[1]?.maneuver).toBe("finish");
+    });
+
+    it("omits streetName when empty", () => {
+      const instrs = [
+        { distance: 100, sign: 2, interval: [0, 1] as [number, number], text: "Turn right", street_name: "" },
+      ];
+      const cues = parseInstructions(instrs, coords);
+      expect(cues[0]?.streetName).toBeUndefined();
+    });
+
+    it("applies distanceOffset for multi-leg stitching", () => {
+      const instrs = [
+        { distance: 200, sign: 0, interval: [0, 1] as [number, number], text: "Continue", street_name: "" },
+      ];
+      const cues = parseInstructions(instrs, coords, 1000, 5);
+      expect(cues[0]?.distanceFromStartMeters).toBe(1000);
+      expect(cues[0]?.index).toBe(5);
     });
   });
 

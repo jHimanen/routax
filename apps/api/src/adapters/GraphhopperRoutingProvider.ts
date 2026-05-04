@@ -1,5 +1,6 @@
 import {
   PRESET_DEFAULTS,
+  type CueEntry,
   type PointToPointRequest,
   type RoundTripRequest,
   type RouteProfilePreset,
@@ -8,6 +9,14 @@ import {
   type SurfaceClass,
   type Waypoint,
 } from "@routax/shared";
+
+interface GhInstruction {
+  distance: number;
+  sign: number;
+  interval: [number, number];
+  text: string;
+  street_name?: string;
+}
 
 interface GhResponse {
   paths: Array<{
@@ -22,7 +31,69 @@ interface GhResponse {
     details?: {
       surface?: Array<[number, number, string]>;
     };
+    instructions?: GhInstruction[];
   }>;
+}
+
+export function normalizeManeuver(sign: number): string {
+  switch (sign) {
+    case -3:
+      return "sharp_left";
+    case -2:
+      return "turn_left";
+    case -1:
+      return "slight_left";
+    case 0:
+      return "continue";
+    case 1:
+      return "slight_right";
+    case 2:
+      return "turn_right";
+    case 3:
+      return "sharp_right";
+    case 4:
+      return "finish";
+    case 5:
+      return "via_point";
+    case 6:
+      return "roundabout_right";
+    case -6:
+      return "roundabout_left";
+    case 7:
+      return "keep_right";
+    case -7:
+      return "keep_left";
+    default:
+      return "continue";
+  }
+}
+
+export function parseInstructions(
+  instructions: GhInstruction[],
+  coords: [number, number][],
+  distanceOffset = 0,
+  indexOffset = 0,
+): CueEntry[] {
+  if (instructions.length === 0) return [];
+  let cumulative = distanceOffset;
+  return instructions.map((instr, i) => {
+    const fromPrev = i === 0 ? 0 : instructions[i - 1]!.distance;
+    if (i > 0) cumulative += fromPrev;
+    const coordIndex = instr.interval[0];
+    const coord = coords[coordIndex] ?? coords[0] ?? [0, 0];
+    const entry: CueEntry = {
+      index: indexOffset + i,
+      distanceFromStartMeters: cumulative,
+      distanceFromPreviousMeters: i === 0 ? 0 : fromPrev,
+      maneuver: normalizeManeuver(instr.sign),
+      text: instr.text.trim(),
+      coordinate: coord,
+    };
+    if (instr.street_name && instr.street_name.trim().length > 0) {
+      entry.streetName = instr.street_name.trim();
+    }
+    return entry;
+  });
 }
 
 export function normalizeSurface(raw: string): SurfaceClass {
@@ -200,6 +271,7 @@ export function stitchRouteLegs(legs: RouteResult[]): RouteResult {
   const coordinates: [number, number][] = [...first.geometry.coordinates];
   const elevationProfile: number[] = [...first.elevationProfile];
   const surfaces: SurfaceClass[] = [...first.surfaces];
+  const cueSheet = [...first.cueSheet];
   let distance = first.distance;
   let duration = first.duration;
   let ascent = first.ascent;
@@ -215,6 +287,18 @@ export function stitchRouteLegs(legs: RouteResult[]): RouteResult {
 
     // Surfaces are per-edge (length = coords - 1); no deduplication needed.
     surfaces.push(...leg.surfaces);
+
+    // Offset each cue's cumulative distance by the accumulated route distance so far.
+    const distanceOffset = distance;
+    const indexOffset = cueSheet.length;
+    for (const cue of leg.cueSheet) {
+      cueSheet.push({
+        ...cue,
+        index: indexOffset + cue.index,
+        distanceFromStartMeters: distanceOffset + cue.distanceFromStartMeters,
+      });
+    }
+
     distance += leg.distance;
     duration += leg.duration;
     ascent += leg.ascent;
@@ -229,6 +313,7 @@ export function stitchRouteLegs(legs: RouteResult[]): RouteResult {
     ascent,
     descent,
     surfaces,
+    cueSheet,
   };
 }
 
@@ -254,6 +339,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       elevation: true,
       points_encoded: false,
       "ch.disable": true,
+      instructions: true,
       custom_model: buildCustomModel(profile, preset),
       details: ["surface"],
     };
@@ -288,6 +374,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
 
     const surfaceRanges = path.details?.surface ?? [];
     const surfaces = parseSurfaceDetails(surfaceRanges, coordinates.length - 1);
+    const cueSheet = parseInstructions(path.instructions ?? [], coordinates);
 
     return {
       distance: path.distance,
@@ -297,6 +384,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       ascent: path.ascend,
       descent: path.descend,
       surfaces,
+      cueSheet,
     };
   }
 
@@ -328,6 +416,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       elevation: true,
       points_encoded: false,
       "ch.disable": true,
+      instructions: true,
       algorithm: "round_trip",
       "round_trip.distance": request.targetDistanceKm * 1000,
       "round_trip.seed": request.seed ?? 0,
@@ -370,6 +459,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
 
     const surfaceRanges = path.details?.surface ?? [];
     const surfaces = parseSurfaceDetails(surfaceRanges, coordinates.length - 1);
+    const cueSheet = parseInstructions(path.instructions ?? [], coordinates);
 
     const generatedWaypoints = sampleWaypointsFromGeometry(coordinates, 4);
 
@@ -381,6 +471,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       ascent: path.ascend,
       descent: path.descend,
       surfaces,
+      cueSheet,
       generatedWaypoints,
     };
   }
