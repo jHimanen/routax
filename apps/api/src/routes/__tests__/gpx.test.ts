@@ -126,6 +126,65 @@ describe("buildGpx", () => {
     expect(xml).toContain("<ele>16.0</ele>");
     expect(xml).toContain("<ele>0.0</ele>");
   });
+
+  it("emits <wpt> elements for non-finish cue entries", () => {
+    const xml = buildGpx({
+      ...baseParams,
+      cueSheet: [
+        {
+          index: 0,
+          distanceFromStartMeters: 0,
+          distanceFromPreviousMeters: 0,
+          maneuver: "turn_right",
+          streetName: "Mannerheimintie",
+          text: "Turn right onto Mannerheimintie",
+          coordinate: [24.9384, 60.1699],
+        },
+        {
+          index: 1,
+          distanceFromStartMeters: 500,
+          distanceFromPreviousMeters: 500,
+          maneuver: "finish",
+          text: "Arrive at destination",
+          coordinate: [24.9654, 60.2055],
+        },
+      ],
+    });
+    // The turn_right cue becomes a waypoint; the finish does not.
+    expect(xml.match(/<wpt /g)).toHaveLength(1);
+    expect(xml).toContain("R Mannerheimintie");
+    expect(xml).toContain("gpxx:WaypointExtension");
+    expect(xml).toContain("SymbolAndName");
+    expect(xml).not.toContain("finish");
+  });
+
+  it("adds gpxx namespace declaration when cue waypoints are present", () => {
+    const xml = buildGpx({
+      ...baseParams,
+      cueSheet: [
+        {
+          index: 0,
+          distanceFromStartMeters: 0,
+          distanceFromPreviousMeters: 0,
+          maneuver: "continue",
+          text: "Head north",
+          coordinate: [24.9384, 60.1699],
+        },
+      ],
+    });
+    expect(xml).toContain("garmin.com/xmlschemas/GpxExtensions");
+  });
+
+  it("produces no <wpt> elements and no gpxx namespace for an empty cue sheet", () => {
+    const xml = buildGpx({ ...baseParams, cueSheet: [] });
+    expect(xml).not.toContain("<wpt ");
+    expect(xml).not.toContain("gpxx");
+  });
+
+  it("produces no <wpt> elements when cueSheet is omitted", () => {
+    const xml = buildGpx(baseParams);
+    expect(xml).not.toContain("<wpt ");
+  });
 });
 
 // ── Integration tests ─────────────────────────────────────────────────────────

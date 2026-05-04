@@ -11,6 +11,7 @@ import {
 } from "@routax/shared";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
+import { cueRowLabel, formatCueDistance } from "../lib/cues";
 import { buildRouteUrl } from "../lib/url";
 import { ElevationProfile } from "./ElevationProfile";
 import { SurfaceLegend } from "./SurfaceLegend";
@@ -51,6 +52,10 @@ interface RoutePanelProps {
   surfaceMapViz: boolean;
   /** Called with the map coordinate under the hovered chart position, or null on leave. */
   onElevationHover: (coord: [number, number] | null) => void;
+  /** When true, render the cue sheet list. */
+  cueSheets: boolean;
+  /** Called with [lng, lat] when the user clicks a cue row. */
+  onCueSelect: (coord: [number, number]) => void;
   onAddVia: () => void;
   onRemoveVia: (id: string) => void;
   onMoveViaUp: (id: string) => void;
@@ -129,6 +134,8 @@ export function RoutePanel({
   isGenerating,
   hasRoundTripStart,
   planningMetadata,
+  cueSheets,
+  onCueSelect,
 }: RoutePanelProps): React.JSX.Element {
   const hasStart = waypoints.length >= 1;
   const hasFinish = waypoints.length >= 2;
@@ -268,6 +275,7 @@ export function RoutePanel({
         elevationProfile: result.elevationProfile,
         distance: result.distance,
         name: formName.trim() || undefined,
+        cueSheet: result.cueSheet.length > 0 ? result.cueSheet : undefined,
       });
     } catch (e) {
       setGpxError(e instanceof Error ? e.message : "Download failed");
@@ -584,6 +592,33 @@ export function RoutePanel({
           geometry={result.geometry}
           onHoverCoord={onElevationHover}
         />
+      )}
+
+      {cueSheets && result && result.cueSheet.length > 0 && (
+        <section className="route-panel-cues" aria-label="Cue sheet">
+          <h3 className="route-panel-cues-heading">Turn-by-turn</h3>
+          <ol className="route-panel-cues-list">
+            {result.cueSheet.map((cue) => (
+              <li key={cue.index}>
+                <button
+                  type="button"
+                  className="route-panel-cue-row"
+                  onClick={() => onCueSelect(cue.coordinate)}
+                >
+                  <span className="route-panel-cue-dist">
+                    {formatCueDistance(cue.distanceFromStartMeters)}
+                  </span>
+                  <span className="route-panel-cue-label">{cueRowLabel(cue)}</span>
+                  {cue.distanceFromPreviousMeters > 0 && (
+                    <span className="route-panel-cue-interval">
+                      +{formatCueDistance(cue.distanceFromPreviousMeters)}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       {gpxExport && result && (

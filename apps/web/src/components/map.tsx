@@ -32,6 +32,7 @@ function routeResultFromSaved(saved: SavedRoute): RouteResult {
     ascent: saved.ascent,
     descent: saved.descent,
     surfaces: saved.surfaceProfile,
+    cueSheet: saved.cueSheet,
   };
 }
 
@@ -142,6 +143,8 @@ interface RoutaxMapProps {
   cursorMode: "crosshair" | "grab";
   surfaces: SurfaceClass[];
   surfaceMapViz: boolean;
+  /** When set, the map flies to this coordinate (cue centering). */
+  cueCoord: [number, number] | null;
 }
 
 function RoutaxMap({
@@ -156,6 +159,7 @@ function RoutaxMap({
   cursorMode,
   surfaces,
   surfaceMapViz,
+  cueCoord,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -366,6 +370,11 @@ function RoutaxMap({
     }
   }, [hoverCoord, mapLoaded]);
 
+  useEffect(() => {
+    if (!cueCoord || !mapRef.current || !mapLoaded) return;
+    mapRef.current.flyTo({ center: [cueCoord[0], cueCoord[1]], zoom: 15 });
+  }, [cueCoord, mapLoaded]);
+
   if (!styleUrl) {
     return (
       <section className="map-root">
@@ -418,7 +427,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const gpxExport = isReady && flags.gpx_export === true;
   const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
   const surfaceMapViz = isReady && flags.surface_visualization === true;
+  const cueSheets = isReady && flags.cue_sheets === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
+
+  const [cueCoord, setCueCoord] = useState<[number, number] | null>(null);
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
@@ -511,12 +523,17 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         elevationProfile: result.elevationProfile,
         surfaceProfile: result.surfaces,
         waypoints,
+        cueSheet: result.cueSheet,
         planningMetadata: planningMetadata ?? undefined,
       });
       return created.id;
     },
     [result, preset, profile, waypoints, planningMetadata],
   );
+
+  const handleCueSelect = useCallback(([lng, lat]: [number, number]) => {
+    setCueCoord([lng, lat]);
+  }, []);
 
   const handleReset = useCallback(() => {
     setWaypoints([]);
@@ -683,6 +700,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         cursorMode={cursorMode}
         surfaces={result?.surfaces ?? []}
         surfaceMapViz={surfaceMapViz}
+        cueCoord={cueCoord}
       />
       <RoutePanel
         waypoints={waypoints}
@@ -707,6 +725,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         gpxExport={gpxExport}
         elevationProfileViz={elevationProfileViz}
         surfaceMapViz={surfaceMapViz}
+        cueSheets={cueSheets}
+        onCueSelect={handleCueSelect}
         onElevationHover={setHoverCoord}
         onAddVia={handleAddVia}
         onRemoveVia={handleRemoveVia}
