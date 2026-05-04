@@ -1,6 +1,6 @@
 import {
-  PRESET_DEFAULTS,
   type CueEntry,
+  PRESET_DEFAULTS,
   type PointToPointRequest,
   type RoundTripRequest,
   type RouteProfilePreset,
@@ -77,7 +77,7 @@ export function parseInstructions(
   if (instructions.length === 0) return [];
   let cumulative = distanceOffset;
   return instructions.map((instr, i) => {
-    const fromPrev = i === 0 ? 0 : instructions[i - 1]!.distance;
+    const fromPrev = i === 0 ? 0 : (instructions[i - 1]?.distance ?? 0);
     if (i > 0) cumulative += fromPrev;
     const coordIndex = instr.interval[0];
     const coord = coords[coordIndex] ?? coords[0] ?? [0, 0];

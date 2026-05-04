@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { CueEntry } from "@routax/shared";
+import { describe, expect, it } from "vitest";
 import { cueRowLabel, formatCueDistance, maneuverLabel } from "../cues";
 
 describe("formatCueDistance", () => {

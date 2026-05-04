@@ -5,8 +5,8 @@ import {
   buildCustomModel,
   normalizeManeuver,
   normalizeSurface,
-  parseSurfaceDetails,
   parseInstructions,
+  parseSurfaceDetails,
   stitchRouteLegs,
 } from "../GraphhopperRoutingProvider.js";
 
@@ -379,8 +379,20 @@ describe("GraphhopperRoutingProvider", () => {
 
     it("parses two instructions with correct distances", () => {
       const instrs = [
-        { distance: 500, sign: 0, interval: [0, 1] as [number, number], text: "Head north", street_name: "Mannerheimintie" },
-        { distance: 0, sign: 4, interval: [1, 2] as [number, number], text: "Arrive at destination", street_name: "" },
+        {
+          distance: 500,
+          sign: 0,
+          interval: [0, 1] as [number, number],
+          text: "Head north",
+          street_name: "Mannerheimintie",
+        },
+        {
+          distance: 0,
+          sign: 4,
+          interval: [1, 2] as [number, number],
+          text: "Arrive at destination",
+          street_name: "",
+        },
       ];
       const cues = parseInstructions(instrs, coords);
 
@@ -398,7 +410,13 @@ describe("GraphhopperRoutingProvider", () => {
 
     it("omits streetName when empty", () => {
       const instrs = [
-        { distance: 100, sign: 2, interval: [0, 1] as [number, number], text: "Turn right", street_name: "" },
+        {
+          distance: 100,
+          sign: 2,
+          interval: [0, 1] as [number, number],
+          text: "Turn right",
+          street_name: "",
+        },
       ];
       const cues = parseInstructions(instrs, coords);
       expect(cues[0]?.streetName).toBeUndefined();
@@ -406,7 +424,13 @@ describe("GraphhopperRoutingProvider", () => {
 
     it("applies distanceOffset for multi-leg stitching", () => {
       const instrs = [
-        { distance: 200, sign: 0, interval: [0, 1] as [number, number], text: "Continue", street_name: "" },
+        {
+          distance: 200,
+          sign: 0,
+          interval: [0, 1] as [number, number],
+          text: "Continue",
+          street_name: "",
+        },
       ];
       const cues = parseInstructions(instrs, coords, 1000, 5);
       expect(cues[0]?.distanceFromStartMeters).toBe(1000);

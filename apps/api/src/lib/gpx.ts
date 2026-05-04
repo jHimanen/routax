@@ -10,8 +10,7 @@ export interface GpxParams {
 }
 
 const GPXX_NS = "http://www.garmin.com/xmlschemas/GpxExtensions/v3";
-const GPXX_XSD =
-  "http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd";
+const GPXX_XSD = "http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd";
 const MAX_WPT_NAME = 30;
 
 function escapeXml(s: string): string {
@@ -76,9 +75,10 @@ export function buildGpx({
   const wptCues = cueSheet.filter((c) => c.maneuver !== "finish");
   const wptsXml = wptCues
     .map((cue) => {
-      const [lng, lat] = cue.coordinate;
+      const lng = cue.coordinate[0];
+      const lat = cue.coordinate[1];
       const label = escapeXml(cueLabel(cue));
-      return `  <wpt lat="${lat!.toFixed(6)}" lon="${lng!.toFixed(6)}">
+      return `  <wpt lat="${lat.toFixed(6)}" lon="${lng.toFixed(6)}">
     <name>${label}</name>
     <extensions>
       <gpxx:WaypointExtension xmlns:gpxx="${GPXX_NS}">
