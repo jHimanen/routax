@@ -82,6 +82,18 @@ export const RouteRequestSchema = z.union([PointToPointRequestSchema, RoundTripR
 
 export type RouteRequest = z.infer<typeof RouteRequestSchema>;
 
+export const CueEntrySchema = z.object({
+  index: z.number().int(),
+  distanceFromStartMeters: z.number(),
+  distanceFromPreviousMeters: z.number(),
+  maneuver: z.string(),
+  streetName: z.string().optional(),
+  text: z.string(),
+  coordinate: z.tuple([z.number(), z.number()]),
+});
+
+export type CueEntry = z.infer<typeof CueEntrySchema>;
+
 export const RouteResultSchema = z.object({
   distance: z.number(),
   duration: z.number(),
@@ -94,6 +106,7 @@ export const RouteResultSchema = z.object({
   descent: z.number(),
   surfaces: z.array(SurfaceClassSchema).default([]),
   generatedWaypoints: z.array(WaypointSchema).optional(),
+  cueSheet: z.array(CueEntrySchema).default([]),
 });
 
 export type RouteResult = z.infer<typeof RouteResultSchema>;
@@ -137,6 +150,7 @@ export const SavedRouteSchema = z.object({
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
   waypoints: z.array(WaypointSchema).default([]),
+  cueSheet: z.array(CueEntrySchema).default([]),
   planningMetadata: PlanningMetadataSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -154,6 +168,7 @@ export const CreateRouteRequestSchema = z.object({
   elevationProfile: z.array(z.number()),
   surfaceProfile: z.array(SurfaceClassSchema).default([]),
   waypoints: z.array(WaypointSchema).default([]),
+  cueSheet: z.array(CueEntrySchema).default([]),
   planningMetadata: PlanningMetadataSchema.optional(),
 });
 
@@ -171,6 +186,7 @@ export const GpxPreviewRequestSchema = z.object({
   elevationProfile: z.array(z.number()),
   distance: z.number(),
   name: z.string().max(80).optional(),
+  cueSheet: z.array(CueEntrySchema).optional(),
 });
 
 export type SavedRoute = z.infer<typeof SavedRouteSchema>;
