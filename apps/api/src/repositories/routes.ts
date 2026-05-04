@@ -1,5 +1,6 @@
 import type {
   CreateRouteRequest,
+  CueEntry,
   PlanningMetadata,
   RouteProfilePreset,
   SavedRoute,
@@ -32,6 +33,7 @@ interface RouteRow {
   elevation_profile: unknown;
   surface_profile: unknown;
   waypoints_json: unknown;
+  cue_sheet_json: unknown;
   planning_metadata_json: unknown;
   created_at: Date;
   updated_at: Date;
@@ -75,6 +77,7 @@ function toSavedRoute(row: RouteRow): SavedRoute {
     elevationProfile: row.elevation_profile as SavedRoute["elevationProfile"],
     surfaceProfile: row.surface_profile as SavedRoute["surfaceProfile"],
     waypoints: row.waypoints_json as Waypoint[],
+    cueSheet: (row.cue_sheet_json as CueEntry[] | null) ?? [],
     planningMetadata: row.planning_metadata_json
       ? (row.planning_metadata_json as PlanningMetadata)
       : undefined,
@@ -97,6 +100,7 @@ const SELECT_COLS = `
   elevation_profile,
   surface_profile,
   waypoints_json,
+  cue_sheet AS cue_sheet_json,
   planning_metadata_json,
   created_at,
   updated_at`;
@@ -107,9 +111,9 @@ export class RouteRepository {
   async create(userId: string, payload: CreateRouteRequest): Promise<SavedRoute> {
     const result = await this.pool.query<RouteRow>(
       `INSERT INTO routes (
-        user_id, name, preset, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile, waypoints_json, planning_metadata_json
+        user_id, name, preset, geometry, profile, distance_m, duration_s, ascent_m, descent_m, elevation_profile, surface_profile, waypoints_json, cue_sheet, planning_metadata_json
       ) VALUES (
-        $1, $2, $3, ST_GeomFromGeoJSON($4)::geography, $5::jsonb, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb
+        $1, $2, $3, ST_GeomFromGeoJSON($4)::geography, $5::jsonb, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb
       )
       RETURNING ${SELECT_COLS}`,
       [
@@ -125,6 +129,7 @@ export class RouteRepository {
         JSON.stringify(payload.elevationProfile),
         JSON.stringify(payload.surfaceProfile ?? []),
         JSON.stringify(payload.waypoints ?? []),
+        JSON.stringify(payload.cueSheet ?? []),
         JSON.stringify(payload.planningMetadata ?? null),
       ],
     );
