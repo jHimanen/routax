@@ -41,6 +41,7 @@ export function registerGpxEndpoints(app: FastifyInstance, container: Container)
       appLink: buildAppLink(saved.id),
       coordinates: saved.geometry.coordinates,
       elevationProfile: saved.elevationProfile,
+      cueSheet: saved.cueSheet,
     });
 
     const date = saved.createdAt.slice(0, 10).replace(/-/g, "");
@@ -85,6 +86,7 @@ export function registerGpxEndpoints(app: FastifyInstance, container: Container)
         appLink: undefined,
         coordinates: body.geometry.coordinates,
         elevationProfile: body.elevationProfile,
+        cueSheet: body.cueSheet,
       });
 
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
