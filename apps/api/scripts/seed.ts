@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import type { RouteResult } from "@routax/shared";
 import dotenv from "dotenv";
 import { runner } from "node-pg-migrate";
 import type { Pool } from "pg";
@@ -98,15 +99,6 @@ const FIXTURE_PATH = path.join(__dirname, "seed-fixtures/routes.json");
 const MIGRATIONS_DIR = path.join(__dirname, "../migrations");
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-interface RouteResult {
-  distance: number;
-  duration: number;
-  geometry: { type: "LineString"; coordinates: [number, number][] };
-  elevationProfile: number[];
-  ascent: number;
-  descent: number;
-}
 
 interface RouteFixture {
   slug: string;
@@ -265,25 +257,47 @@ export async function seedRoutes(
     const planningMetadata =
       "planningMetadata" in def && def.planningMetadata ? def.planningMetadata : null;
 
+    const waypoints = [
+      { id: `${id}-start`, position: def.start, role: "start" as const },
+      { id: `${id}-finish`, position: def.end, role: "finish" as const },
+    ];
+
     await pool.query(
       `INSERT INTO routes (
          id, user_id, name,
-         geometry, profile,
+         preset, geometry, profile,
          distance_m, duration_s, ascent_m, descent_m, elevation_profile,
+         surface_profile, waypoints_json, cue_sheet,
          planning_metadata_json,
          created_at, updated_at
        ) VALUES (
          $1, $2, $3,
-         ST_GeomFromGeoJSON($4)::geography, $5::jsonb,
-         $6, $7, $8, $9, $10::jsonb,
-         $11::jsonb,
+         $4, ST_GeomFromGeoJSON($5)::geography, $6::jsonb,
+         $7, $8, $9, $10, $11::jsonb,
+         $12::jsonb, $13::jsonb, $14::jsonb,
+         $15::jsonb,
          now(), now()
        )
-       ON CONFLICT (id) DO NOTHING`,
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         preset = EXCLUDED.preset,
+         geometry = EXCLUDED.geometry,
+         profile = EXCLUDED.profile,
+         distance_m = EXCLUDED.distance_m,
+         duration_s = EXCLUDED.duration_s,
+         ascent_m = EXCLUDED.ascent_m,
+         descent_m = EXCLUDED.descent_m,
+         elevation_profile = EXCLUDED.elevation_profile,
+         surface_profile = EXCLUDED.surface_profile,
+         waypoints_json = EXCLUDED.waypoints_json,
+         cue_sheet = EXCLUDED.cue_sheet,
+         planning_metadata_json = EXCLUDED.planning_metadata_json,
+         updated_at = now()`,
       [
         id,
         SEED_USER_ID,
         def.name,
+        def.preset,
         JSON.stringify(result.geometry),
         JSON.stringify(def.advancedOverrides),
         Math.round(result.distance),
@@ -291,6 +305,9 @@ export async function seedRoutes(
         Math.round(result.ascent),
         Math.round(result.descent),
         JSON.stringify(result.elevationProfile),
+        JSON.stringify(result.surfaces ?? []),
+        JSON.stringify(waypoints),
+        JSON.stringify(result.cueSheet ?? []),
         planningMetadata ? JSON.stringify(planningMetadata) : null,
       ],
     );

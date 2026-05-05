@@ -6,7 +6,14 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignore": ["node_modules", ".next", "dist", "routax-wiki", "*.tsbuildinfo"]
+    "ignore": [
+      "node_modules",
+      ".next",
+      "dist",
+      "routax-wiki",
+      "*.tsbuildinfo",
+      "apps/api/scripts/seed-fixtures/**"
+    ]
   },
   "formatter": {
     "enabled": true,
