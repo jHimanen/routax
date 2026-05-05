@@ -1,6 +1,12 @@
-import { type FlagContext, type GpxPreviewRequest, GpxPreviewRequestSchema } from "@routax/shared";
+import {
+  type FlagContext,
+  GpxImportRequestSchema,
+  type GpxPreviewRequest,
+  GpxPreviewRequestSchema,
+} from "@routax/shared";
 import type { FastifyInstance } from "fastify";
 import type { Container } from "../container.js";
+import { GpxParseError, normalizeToWaypoints, parseGpxPoints } from "../lib/gpx-parse.js";
 import { buildGpx, toSlug } from "../lib/gpx.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -107,6 +113,64 @@ export function registerGpxEndpoints(app: FastifyInstance, container: Container)
         .type("application/gpx+xml")
         .header("Content-Disposition", `attachment; filename="${filename}"`)
         .send(xml);
+    },
+  );
+
+  app.post(
+    "/gpx/import",
+    { schema: { body: GpxImportRequestSchema }, bodyLimit: 4 * 1024 * 1024 },
+    async (request, reply) => {
+      const user = await container.auth.requireUser(request);
+
+      const flagEnabled = await container.flags.isEnabled("gpx_import", {
+        userId: user.id,
+        environment: (process.env.NODE_ENV ?? "local") as FlagContext["environment"],
+      });
+      if (!flagEnabled) {
+        return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Not found" } });
+      }
+
+      const { gpxText, filename } = request.body as { gpxText: string; filename: string };
+      const importedAt = new Date().toISOString();
+
+      await container.analytics.track({
+        name: "gpx_import_started",
+        userId: user.id,
+        properties: { filename },
+      });
+
+      let points: ReturnType<typeof parseGpxPoints>;
+      try {
+        points = parseGpxPoints(gpxText);
+      } catch (err) {
+        await container.analytics.track({
+          name: "gpx_import_failed",
+          userId: user.id,
+          properties: {
+            filename,
+            reason: err instanceof GpxParseError ? err.message : "unknown",
+          },
+        });
+        const message = err instanceof GpxParseError ? err.message : "Could not parse GPX file.";
+        return reply.code(422).send({ error: { code: "UNPROCESSABLE", message } });
+      }
+
+      const pointCount = points.length;
+      const simplified = pointCount > 20;
+      const waypoints = normalizeToWaypoints(points);
+
+      await container.analytics.track({
+        name: "gpx_import_succeeded",
+        userId: user.id,
+        properties: {
+          filename,
+          point_count: pointCount,
+          simplified,
+          waypoint_count: waypoints.length,
+        },
+      });
+
+      return reply.send({ waypoints, importedAt, filename, pointCount, simplified });
     },
   );
 }

@@ -9,7 +9,7 @@ import {
   type SavedRoute,
   type Waypoint,
 } from "@routax/shared";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
 import { cueRowLabel, formatCueDistance } from "../lib/cues";
 import { buildRouteUrl } from "../lib/url";
@@ -56,6 +56,12 @@ interface RoutePanelProps {
   cueSheets: boolean;
   /** Called with [lng, lat] when the user clicks a cue row. */
   onCueSelect: (coord: [number, number]) => void;
+  /** When true, render the Import GPX button. */
+  gpxImport: boolean;
+  /** Called when the user selects a .gpx file to import. */
+  onImportGpx: (file: File) => void;
+  /** Status for an in-progress or completed import. */
+  importStatus: { phase: "importing" | "simplified" | "error"; message: string } | null;
   onAddVia: () => void;
   onRemoveVia: (id: string) => void;
   onMoveViaUp: (id: string) => void;
@@ -116,6 +122,9 @@ export function RoutePanel({
   routeModified,
   deepLinkLoading,
   gpxExport,
+  gpxImport,
+  onImportGpx,
+  importStatus,
   elevationProfileViz,
   surfaceMapViz,
   onElevationHover,
@@ -153,6 +162,7 @@ export function RoutePanel({
 
   const [gpxDownloading, setGpxDownloading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const [loadOpen, setLoadOpen] = useState(false);
   const [loadItems, setLoadItems] = useState<SavedRoute[]>([]);
@@ -383,6 +393,39 @@ export function RoutePanel({
         <p className="route-panel-deeplink-status" aria-live="polite">
           Loading route…
         </p>
+      )}
+
+      {gpxImport && !deepLinkLoading && (
+        <>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".gpx"
+            style={{ display: "none" }}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const file = e.target.files?.[0];
+              if (file) onImportGpx(file);
+              // Reset so same file can be re-imported
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className="route-panel-import-gpx"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importStatus?.phase === "importing"}
+          >
+            {importStatus?.phase === "importing" ? "Importing…" : "Import GPX"}
+          </button>
+          {importStatus?.phase === "simplified" && (
+            <p className="route-panel-status">{importStatus.message}</p>
+          )}
+          {importStatus?.phase === "error" && (
+            <p className="route-panel-error" role="alert">
+              {importStatus.message}
+            </p>
+          )}
+        </>
       )}
 
       {canUseSaved && (

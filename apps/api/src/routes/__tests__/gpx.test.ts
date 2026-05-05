@@ -200,11 +200,11 @@ describe("GPX endpoints", () => {
       primaryUserId,
       alternateUserId,
     ]);
-    await pool.query("DELETE FROM flags WHERE key = 'gpx_export'");
+    await pool.query("DELETE FROM flags WHERE key IN ('gpx_export', 'gpx_import')");
   });
 
   afterAll(async () => {
-    await pool.query("DELETE FROM flags WHERE key = 'gpx_export'");
+    await pool.query("DELETE FROM flags WHERE key IN ('gpx_export', 'gpx_import')");
     await pool.end();
   });
 
@@ -371,6 +371,138 @@ describe("GPX endpoints", () => {
         },
       });
       expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+  });
+
+  // ── POST /gpx/import ─────────────────────────────────────────────────────
+
+  describe("POST /gpx/import", () => {
+    beforeAll(async () => {
+      await pool.query(
+        "INSERT INTO flags (key, rules) VALUES ('gpx_import', $1) ON CONFLICT (key) DO UPDATE SET rules = $1",
+        [JSON.stringify({ default: true })],
+      );
+    });
+
+    afterAll(async () => {
+      await pool.query("DELETE FROM flags WHERE key = 'gpx_import'");
+    });
+    const trkGpx = `<?xml version="1.0"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><trkseg>
+    <trkpt lat="60.169" lon="24.938"><ele>10</ele></trkpt>
+    <trkpt lat="60.180" lon="24.950"><ele>15</ele></trkpt>
+    <trkpt lat="60.200" lon="24.970"><ele>20</ele></trkpt>
+  </trkseg></trk>
+</gpx>`;
+
+    const rteGpx = `<?xml version="1.0"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+  <rte>
+    <rtept lat="61.498" lon="23.760"></rtept>
+    <rtept lat="61.550" lon="23.900"></rtept>
+    <rtept lat="61.600" lon="24.000"></rtept>
+  </rte>
+</gpx>`;
+
+    it("POST /gpx/import accepts a trk-based GPX and returns waypoints", async () => {
+      const app = makeAppForUser(primaryUserId);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: trkGpx, filename: "test-track.gpx" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{
+        waypoints: Array<{ role: string }>;
+        pointCount: number;
+        simplified: boolean;
+      }>();
+      expect(body.pointCount).toBe(3);
+      expect(body.simplified).toBe(false);
+      expect(body.waypoints[0]?.role).toBe("start");
+      expect(body.waypoints[body.waypoints.length - 1]?.role).toBe("finish");
+      await app.close();
+    });
+
+    it("POST /gpx/import accepts an rte-based GPX", async () => {
+      const app = makeAppForUser(primaryUserId);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: rteGpx, filename: "test-route.gpx" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{ waypoints: Array<unknown>; pointCount: number }>();
+      expect(body.pointCount).toBe(3);
+      expect(body.waypoints).toHaveLength(3);
+      await app.close();
+    });
+
+    it("POST /gpx/import simplifies dense tracks and sets simplified=true", async () => {
+      // Generate 60 trkpt elements — above the MAX_WAYPOINTS=20 threshold
+      const pts = Array.from(
+        { length: 60 },
+        (_, i) => `<trkpt lat="${60 + i * 0.001}" lon="${24 + i * 0.001}"></trkpt>`,
+      ).join("\n");
+      const denseGpx = `<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${pts}</trkseg></trk></gpx>`;
+
+      const app = makeAppForUser(primaryUserId);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: denseGpx, filename: "dense.gpx" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{
+        waypoints: Array<unknown>;
+        pointCount: number;
+        simplified: boolean;
+      }>();
+      expect(body.pointCount).toBe(60);
+      expect(body.simplified).toBe(true);
+      expect(body.waypoints.length).toBeLessThanOrEqual(20);
+      await app.close();
+    });
+
+    it("POST /gpx/import returns 422 for malformed XML with no trkpt/rtept", async () => {
+      const app = makeAppForUser(primaryUserId);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: "<gpx><metadata/></gpx>", filename: "empty.gpx" },
+      });
+      expect(res.statusCode).toBe(422);
+      await app.close();
+    });
+
+    it("POST /gpx/import returns 422 when trkpt elements have no valid coordinates", async () => {
+      const badGpx = `<gpx><trk><trkseg><trkpt lat="bad" lon="bad"/></trkseg></trk></gpx>`;
+      const app = makeAppForUser(primaryUserId);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: badGpx, filename: "bad-coords.gpx" },
+      });
+      expect(res.statusCode).toBe(422);
+      await app.close();
+    });
+
+    it("POST /gpx/import returns 404 when flag is disabled", async () => {
+      const app = makeAppForUser(primaryUserId);
+      await pool.query("UPDATE flags SET rules = $1 WHERE key = 'gpx_import'", [
+        JSON.stringify({ default: false }),
+      ]);
+      const res = await app.inject({
+        method: "POST",
+        url: "/gpx/import",
+        payload: { gpxText: trkGpx, filename: "test.gpx" },
+      });
+      expect(res.statusCode).toBe(404);
+      await pool.query("UPDATE flags SET rules = $1 WHERE key = 'gpx_import'", [
+        JSON.stringify({ default: true }),
+      ]);
       await app.close();
     });
   });

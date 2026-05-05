@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
-import { createRoute, getRoute, postRoute } from "../lib/api";
+import { createRoute, getRoute, importGpx, postRoute } from "../lib/api";
 import { SURFACE_PALETTE, buildSurfaceFeatureCollection } from "../lib/surfaces";
 import { RoutePanel } from "./RoutePanel";
 
@@ -425,10 +425,16 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const savedFlagOn = flags.saved_routes_ui === true;
   const savedRoutesUi = isReady && savedFlagOn;
   const gpxExport = isReady && flags.gpx_export === true;
+  const gpxImport = isReady && flags.gpx_import === true;
   const elevationProfileViz = isReady && flags.elevation_profile_viz === true;
   const surfaceMapViz = isReady && flags.surface_visualization === true;
   const cueSheets = isReady && flags.cue_sheets === true;
   const deepLinkLoading = Boolean(initialRouteId?.trim()) && !deepLinkResolved;
+
+  const [importStatus, setImportStatus] = useState<{
+    phase: "importing" | "simplified" | "error";
+    message: string;
+  } | null>(null);
 
   const [cueCoord, setCueCoord] = useState<[number, number] | null>(null);
 
@@ -533,6 +539,38 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const handleCueSelect = useCallback(([lng, lat]: [number, number]) => {
     setCueCoord([lng, lat]);
+  }, []);
+
+  const handleGpxImport = useCallback(async (file: File) => {
+    setImportStatus({ phase: "importing", message: "Importing…" });
+    try {
+      const text = await file.text();
+      const res = await importGpx(text, file.name);
+      setResultOverride(null);
+      setLoadBaseline(null);
+      setRouteModified(false);
+      setPlannerMode("point_to_point");
+      setRoundTripSeed(0);
+      setPlanningMetadata({
+        mode: "gpx_import",
+        sourceFilename: res.filename,
+        importedAt: res.importedAt,
+      });
+      setWaypoints(res.waypoints);
+      setImportStatus(
+        res.simplified
+          ? {
+              phase: "simplified",
+              message: `Simplified from ${res.pointCount.toLocaleString()} points to ${res.waypoints.length} waypoints.`,
+            }
+          : null,
+      );
+    } catch (e) {
+      setImportStatus({
+        phase: "error",
+        message: e instanceof Error ? e.message : "Import failed",
+      });
+    }
   }, []);
 
   const handleReset = useCallback(() => {
@@ -723,6 +761,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         routeModified={routeModified}
         deepLinkLoading={deepLinkLoading}
         gpxExport={gpxExport}
+        gpxImport={gpxImport}
+        onImportGpx={(file) => void handleGpxImport(file)}
+        importStatus={importStatus}
         elevationProfileViz={elevationProfileViz}
         surfaceMapViz={surfaceMapViz}
         cueSheets={cueSheets}

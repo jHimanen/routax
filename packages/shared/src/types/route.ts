@@ -117,6 +117,11 @@ export const PlanningMetadataSchema = z.discriminatedUnion("mode", [
     targetDistanceKm: z.number(),
     directionBias: z.enum(["any", "north", "east", "south", "west"]).optional(),
   }),
+  z.object({
+    mode: z.literal("gpx_import"),
+    sourceFilename: z.string(),
+    importedAt: z.string().datetime(),
+  }),
 ]);
 
 export type PlanningMetadata = z.infer<typeof PlanningMetadataSchema>;
@@ -189,8 +194,23 @@ export const GpxPreviewRequestSchema = z.object({
   cueSheet: z.array(CueEntrySchema).optional(),
 });
 
+export const GpxImportRequestSchema = z.object({
+  gpxText: z.string().min(1),
+  filename: z.string().max(260),
+});
+
+export const GpxImportResponseSchema = z.object({
+  waypoints: z.array(WaypointSchema),
+  importedAt: z.string().datetime(),
+  filename: z.string(),
+  pointCount: z.number().int().nonnegative(),
+  simplified: z.boolean(),
+});
+
 export type SavedRoute = z.infer<typeof SavedRouteSchema>;
 export type CreateRouteRequest = z.infer<typeof CreateRouteRequestSchema>;
 export type UpdateRouteRequest = z.infer<typeof UpdateRouteRequestSchema>;
 export type ListRoutesResponse = z.infer<typeof ListRoutesResponseSchema>;
 export type GpxPreviewRequest = z.infer<typeof GpxPreviewRequestSchema>;
+export type GpxImportRequest = z.infer<typeof GpxImportRequestSchema>;
+export type GpxImportResponse = z.infer<typeof GpxImportResponseSchema>;
