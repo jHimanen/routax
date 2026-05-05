@@ -169,6 +169,12 @@ export function RoutePanel({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(false);
   const loadPanelRef = useRef<HTMLDivElement | null>(null);
+  const loadTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [popoverFixedPos, setPopoverFixedPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const canUseSaved = savedRoutesUi && !deepLinkLoading;
 
   useEffect(() => {
@@ -431,9 +437,14 @@ export function RoutePanel({
       {canUseSaved && (
         <div className="route-panel-header" ref={loadPanelRef}>
           <button
+            ref={loadTriggerRef}
             type="button"
             className="route-panel-load-trigger"
             onClick={() => {
+              if (!loadOpen && loadTriggerRef.current) {
+                const r = loadTriggerRef.current.getBoundingClientRect();
+                setPopoverFixedPos({ top: r.bottom + 4, left: r.left, width: r.width });
+              }
               setLoadOpen((o) => !o);
             }}
             aria-expanded={loadOpen}
@@ -442,7 +453,20 @@ export function RoutePanel({
             Load
           </button>
           {loadOpen && (
-            <div className="route-panel-load-popover" aria-label="Recent saved routes">
+            <div
+              className="route-panel-load-popover"
+              aria-label="Recent saved routes"
+              style={
+                popoverFixedPos
+                  ? {
+                      position: "fixed",
+                      top: popoverFixedPos.top,
+                      left: popoverFixedPos.left,
+                      width: popoverFixedPos.width,
+                    }
+                  : undefined
+              }
+            >
               {loadPending && <p className="route-panel-load-status">Loading…</p>}
               {loadError && (
                 <p className="route-panel-load-error" role="alert">
