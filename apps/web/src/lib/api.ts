@@ -1,6 +1,8 @@
 import {
   type CreateRouteRequest,
   CreateRouteRequestSchema,
+  type GpxImportResponse,
+  GpxImportResponseSchema,
   type GpxPreviewRequest,
   type ListRoutesResponse,
   ListRoutesResponseSchema,
@@ -129,6 +131,29 @@ export async function downloadPreviewGpx(payload: GpxPreviewRequest): Promise<vo
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export async function importGpx(
+  gpxText: string,
+  filename: string,
+  signal?: AbortSignal,
+): Promise<GpxImportResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/gpx/import`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ gpxText, filename }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => null);
+    const message =
+      (json as { error?: { message?: string } } | null)?.error?.message ?? "Import failed";
+    throw new Error(message);
+  }
+
+  const json = await response.json();
+  return GpxImportResponseSchema.parse(json);
 }
 
 export async function getRoute(id: string, signal?: AbortSignal): Promise<SavedRoute | null> {
