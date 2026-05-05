@@ -68,6 +68,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .route-panel-header {
@@ -398,6 +402,15 @@ body {
   font-weight: 600;
   color: #374151;
   cursor: pointer;
+}
+
+/* ── Cue sheet ───────────────────────────────────────────────────────────── */
+
+.route-panel-cues {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Elevation profile ───────────────────────────────────────────────────── */
