@@ -6,8 +6,8 @@ import {
 } from "@routax/shared";
 import type { FastifyInstance } from "fastify";
 import type { Container } from "../container.js";
-import { buildGpx, toSlug } from "../lib/gpx.js";
 import { GpxParseError, normalizeToWaypoints, parseGpxPoints } from "../lib/gpx-parse.js";
+import { buildGpx, toSlug } from "../lib/gpx.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -162,7 +162,12 @@ export function registerGpxEndpoints(app: FastifyInstance, container: Container)
       await container.analytics.track({
         name: "gpx_import_succeeded",
         userId: user.id,
-        properties: { filename, point_count: pointCount, simplified, waypoint_count: waypoints.length },
+        properties: {
+          filename,
+          point_count: pointCount,
+          simplified,
+          waypoint_count: waypoints.length,
+        },
       });
 
       return reply.send({ waypoints, importedAt, filename, pointCount, simplified });

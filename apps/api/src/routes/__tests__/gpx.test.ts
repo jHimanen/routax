@@ -200,11 +200,11 @@ describe("GPX endpoints", () => {
       primaryUserId,
       alternateUserId,
     ]);
-    await pool.query("DELETE FROM flags WHERE key = 'gpx_export'");
+    await pool.query("DELETE FROM flags WHERE key IN ('gpx_export', 'gpx_import')");
   });
 
   afterAll(async () => {
-    await pool.query("DELETE FROM flags WHERE key = 'gpx_export'");
+    await pool.query("DELETE FROM flags WHERE key IN ('gpx_export', 'gpx_import')");
     await pool.end();
   });
 
@@ -378,6 +378,16 @@ describe("GPX endpoints", () => {
   // ── POST /gpx/import ─────────────────────────────────────────────────────
 
   describe("POST /gpx/import", () => {
+    beforeAll(async () => {
+      await pool.query(
+        "INSERT INTO flags (key, rules) VALUES ('gpx_import', $1) ON CONFLICT (key) DO UPDATE SET rules = $1",
+        [JSON.stringify({ default: true })],
+      );
+    });
+
+    afterAll(async () => {
+      await pool.query("DELETE FROM flags WHERE key = 'gpx_import'");
+    });
     const trkGpx = `<?xml version="1.0"?>
 <gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
   <trk><trkseg>
@@ -445,7 +455,11 @@ describe("GPX endpoints", () => {
         payload: { gpxText: denseGpx, filename: "dense.gpx" },
       });
       expect(res.statusCode).toBe(200);
-      const body = res.json<{ waypoints: Array<unknown>; pointCount: number; simplified: boolean }>();
+      const body = res.json<{
+        waypoints: Array<unknown>;
+        pointCount: number;
+        simplified: boolean;
+      }>();
       expect(body.pointCount).toBe(60);
       expect(body.simplified).toBe(true);
       expect(body.waypoints.length).toBeLessThanOrEqual(20);

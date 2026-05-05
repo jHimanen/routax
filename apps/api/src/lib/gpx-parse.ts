@@ -16,8 +16,8 @@ interface RawPoint {
 function extractAttr(tag: string, name: string): number | null {
   const m = tag.match(new RegExp(`${name}="([^"]+)"`));
   if (!m) return null;
-  const v = parseFloat(m[1]);
-  return isNaN(v) ? null : v;
+  const v = Number.parseFloat(m[1] ?? "");
+  return Number.isNaN(v) ? null : v;
 }
 
 export function parseGpxPoints(xml: string): RawPoint[] {
@@ -32,16 +32,15 @@ export function parseGpxPoints(xml: string): RawPoint[] {
   const tagRe = new RegExp(`<${tagName}([^>]+)>([\\s\\S]*?)<\\/${tagName}>`, "g");
 
   const points: RawPoint[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = tagRe.exec(xml)) !== null) {
-    const attrs = m[1];
+  for (let m = tagRe.exec(xml); m !== null; m = tagRe.exec(xml)) {
+    const attrs = m[1] ?? "";
     const inner = m[2] ?? "";
     const lat = extractAttr(attrs, "lat");
     const lng = extractAttr(attrs, "lon");
     if (lat === null || lng === null) continue;
     const eleM = inner.match(/<ele>([^<]+)<\/ele>/);
-    const ele = eleM ? parseFloat(eleM[1]) : undefined;
-    points.push({ lat, lng, ele: ele !== undefined && !isNaN(ele) ? ele : undefined });
+    const ele = eleM ? Number.parseFloat(eleM[1] ?? "") : undefined;
+    points.push({ lat, lng, ele: ele !== undefined && !Number.isNaN(ele) ? ele : undefined });
   }
 
   if (points.length === 0) {
