@@ -52,35 +52,40 @@ const ROUTE_DEFINITIONS = [
     name: "Tampere → Jyväskylä",
     start: { lat: 61.498, lng: 23.76 },
     end: { lat: 62.243, lng: 25.747 },
-    profile: { avoidTraffic: 0.3, preferQuietSurfaces: 0.4, maxGradient: 15 },
+    preset: "quiet_country_roads" as const,
+    advancedOverrides: { avoidTraffic: 0.3, preferQuietSurfaces: 0.4, maxGradient: 15 },
   },
   {
     slug: "helsinki-round-trip",
     name: "Helsinki → Espoo round-trip",
     start: { lat: 60.169, lng: 24.938 },
     end: { lat: 60.205, lng: 24.656 },
-    profile: { avoidTraffic: 0.5, preferQuietSurfaces: 0.6, maxGradient: 10 },
+    preset: "fastest_direct" as const,
+    advancedOverrides: { avoidTraffic: 0.5, preferQuietSurfaces: 0.6, maxGradient: 10 },
   },
   {
     slug: "lappeenranta-joensuu",
     name: "Lappeenranta → Joensuu",
     start: { lat: 61.058, lng: 28.187 },
     end: { lat: 62.601, lng: 29.763 },
-    profile: { avoidTraffic: 0.2, preferQuietSurfaces: 0.8, maxGradient: 12 },
+    preset: "quiet_country_roads" as const,
+    advancedOverrides: { avoidTraffic: 0.2, preferQuietSurfaces: 0.8, maxGradient: 12 },
   },
   {
     slug: "tampere-city-loop",
     name: "Tampere city loop",
     start: { lat: 61.497, lng: 23.757 },
     end: { lat: 61.51, lng: 23.8 },
-    profile: { avoidTraffic: 0.6, preferQuietSurfaces: 0.7, maxGradient: 8 },
+    preset: "fastest_direct" as const,
+    advancedOverrides: { avoidTraffic: 0.6, preferQuietSurfaces: 0.7, maxGradient: 8 },
   },
   {
     slug: "tampere-hameenlinna",
     name: "Tampere → Hämeenlinna",
     start: { lat: 61.497, lng: 23.757 },
     end: { lat: 61.001, lng: 24.465 },
-    profile: { avoidTraffic: 0.4, preferQuietSurfaces: 0.5, maxGradient: 12 },
+    preset: "quiet_country_roads" as const,
+    advancedOverrides: { avoidTraffic: 0.4, preferQuietSurfaces: 0.5, maxGradient: 12 },
     planningMetadata: {
       mode: "gpx_import" as const,
       sourceFilename: "tampere-hameenlinna.gpx",
@@ -247,9 +252,9 @@ export async function seedRoutes(
     let result: RouteResult;
     if (mode === "live") {
       result = await container.routing.planRoute({
-        start: def.start,
-        end: def.end,
-        profile: def.profile,
+        waypoints: [def.start, def.end],
+        preset: def.preset,
+        advancedOverrides: def.advancedOverrides,
       });
     } else {
       const f = fixtureMap?.get(def.slug);
@@ -280,7 +285,7 @@ export async function seedRoutes(
         SEED_USER_ID,
         def.name,
         JSON.stringify(result.geometry),
-        JSON.stringify(def.profile),
+        JSON.stringify(def.advancedOverrides),
         Math.round(result.distance),
         Math.round(result.duration),
         Math.round(result.ascent),
@@ -301,9 +306,9 @@ async function writeFixtures(container: Container): Promise<void> {
   for (const def of ROUTE_DEFINITIONS) {
     console.log(`  planning ${def.slug}...`);
     const result = await container.routing.planRoute({
-      start: def.start,
-      end: def.end,
-      profile: def.profile,
+      waypoints: [def.start, def.end],
+      preset: def.preset,
+      advancedOverrides: def.advancedOverrides,
     });
     routes.push({ slug: def.slug, name: def.name, result });
   }
