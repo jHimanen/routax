@@ -145,6 +145,7 @@ interface RoutaxMapProps {
   surfaceMapViz: boolean;
   /** When set, the map flies to this coordinate (cue centering). */
   cueCoord: [number, number] | null;
+  panelOpen: boolean;
 }
 
 function RoutaxMap({
@@ -160,6 +161,7 @@ function RoutaxMap({
   surfaces,
   surfaceMapViz,
   cueCoord,
+  panelOpen,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -322,16 +324,20 @@ function RoutaxMap({
         });
       }
 
-      map.fitBounds(bounds, {
-        padding: { top: 60, bottom: 60, left: 290, right: 60 },
-        animate: true,
-      });
+      const isMobile = typeof window !== "undefined" && window.innerWidth <= 640;
+      const padding = isMobile
+        ? panelOpen
+          ? { top: 60, bottom: 320, left: 60, right: 60 }
+          : { top: 60, bottom: 60, left: 60, right: 60 }
+        : { top: 60, bottom: 60, left: 290, right: 60 };
+
+      map.fitBounds(bounds, { padding, animate: true });
     } else {
       if (map.getLayer(`${LAYER_ID}-hit`)) map.removeLayer(`${LAYER_ID}-hit`);
       if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     }
-  }, [routeGeoJSON, mapLoaded, surfaces, surfaceMapViz]);
+  }, [routeGeoJSON, mapLoaded, surfaces, surfaceMapViz, panelOpen]);
 
   // Elevation hover marker
   const HOVER_SOURCE = "routax-hover";
@@ -749,6 +755,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         surfaces={result?.surfaces ?? []}
         surfaceMapViz={surfaceMapViz}
         cueCoord={cueCoord}
+        panelOpen={panelOpen}
       />
       <RoutePanel
         waypoints={waypoints}
