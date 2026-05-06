@@ -1335,9 +1335,21 @@ body {
     min-height: 44px;
   }
 
+  .route-panel-waypoint-coords {
+    display: none;
+  }
+
   .route-panel-waypoint-btn {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .route-panel-reset,
+  .route-panel-save {
+    min-height: 44px;
   }
 }
