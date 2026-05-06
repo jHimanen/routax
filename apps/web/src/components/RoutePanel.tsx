@@ -850,8 +850,7 @@ export function RoutePanel({
           {copyFeedback && <span className="route-panel-saved-copy">Copied to clipboard</span>}
           {clipboardError && (
             <p className="route-panel-clipboard-fallback">
-              Copy manually:{" "}
-              <span className="route-panel-clipboard-url">{savedUrl}</span>
+              Copy manually: <span className="route-panel-clipboard-url">{savedUrl}</span>
             </p>
           )}
           <button
