@@ -26,6 +26,7 @@ body {
   left: 12px;
   z-index: 10;
   padding: 6px 10px;
+  padding-top: env(safe-area-inset-top, 0);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
@@ -37,6 +38,11 @@ body {
 .map-root {
   width: 100%;
   height: 100%;
+}
+
+.maplibregl-ctrl-top-right {
+  margin-top: max(8px, env(safe-area-inset-top, 8px));
+  margin-right: max(8px, env(safe-area-inset-right, 8px));
 }
 
 .map-container {
@@ -1306,7 +1312,7 @@ body {
     border-radius: 16px 16px 0 0;
     max-height: 70vh;
     max-height: 70dvh;
-    padding: 0 16px 16px;
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0));
     transform: translateY(100%);
     transition: transform 200ms ease-out;
     z-index: 20;
@@ -1342,7 +1348,7 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    bottom: 70px;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0));
     left: 50%;
     transform: translateX(-50%);
     z-index: 20;
@@ -1368,7 +1374,7 @@ body {
     display: flex;
     align-items: center;
     position: fixed;
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0));
     left: 50%;
     transform: translateX(-50%);
     z-index: 15;
