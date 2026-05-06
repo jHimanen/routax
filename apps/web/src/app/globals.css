@@ -195,12 +195,296 @@ body {
   display: none;
 }
 
+/* ── Mode toggle ────────────────────────────────────────────────────────── */
+
+.route-panel-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.route-panel-mode-btn {
+  padding: 6px 8px;
+  border: none;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.route-panel-mode-btn:first-child {
+  border-right: 1px solid #d1d5db;
+}
+
+.route-panel-mode-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.route-panel-mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-mode-btn--active {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.route-panel-mode-btn--active:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+/* ── Round-trip controls ─────────────────────────────────────────────────── */
+
+.route-panel-roundtrip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.route-panel-roundtrip-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.route-panel-rt-input,
+.route-panel-rt-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  background: #fff;
+}
+
+.route-panel-rt-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.route-panel-rt-generate,
+.route-panel-rt-regenerate {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-panel-rt-generate {
+  flex: 1;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.route-panel-rt-generate:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.route-panel-rt-generate:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-rt-regenerate {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.route-panel-rt-regenerate:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.route-panel-rt-regenerate:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-rt-pill {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #eff6ff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d4ed8;
+  text-align: center;
+}
+
 .route-panel-deeplink-status {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 600;
   color: #4b5563;
 }
+
+/* ── Preset buttons ──────────────────────────────────────────────────────── */
+
+.route-panel-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.route-panel-preset {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.route-panel-preset:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.route-panel-preset:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-preset--active {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.route-panel-preset--active:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.route-panel-preset-custom {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  font-weight: 600;
+  color: #b45309;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Waypoint list ───────────────────────────────────────────────────────── */
+
+.route-panel-waypoints {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-panel-waypoint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-left: 3px solid #d1d5db;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+}
+
+.route-panel-waypoint--start {
+  border-left-color: #059669;
+}
+
+.route-panel-waypoint--finish {
+  border-left-color: #2563eb;
+}
+
+.route-panel-waypoint--via {
+  border-left-color: #9ca3af;
+}
+
+.route-panel-waypoint-label {
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.route-panel-waypoint-coords {
+  flex: 1;
+  font-size: 11px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-panel-waypoint-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.route-panel-waypoint-btn {
+  padding: 2px 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.route-panel-waypoint-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.route-panel-waypoint-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.route-panel-waypoint-btn--remove:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ── Via button ──────────────────────────────────────────────────────────── */
+
+.route-panel-add-via {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.route-panel-add-via:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.route-panel-add-via:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Sliders (Advanced section interior) ─────────────────────────────────── */
 
 .route-panel-sliders {
   display: flex;
@@ -408,6 +692,67 @@ body {
   font-weight: 600;
   color: #374151;
   cursor: pointer;
+}
+
+/* ── GPX import / export ─────────────────────────────────────────────────── */
+
+.route-panel-import-gpx,
+.route-panel-gpx {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.route-panel-import-gpx:hover:not(:disabled),
+.route-panel-gpx:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.route-panel-import-gpx:disabled,
+.route-panel-gpx:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Advanced section ────────────────────────────────────────────────────── */
+
+.route-panel-advanced {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.route-panel-advanced-summary {
+  padding: 6px 10px;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-panel-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.route-panel-advanced-summary::before {
+  content: "▶ ";
+  font-size: 9px;
+}
+
+.route-panel-advanced[open] .route-panel-advanced-summary::before {
+  content: "▼ ";
+}
+
+.route-panel-advanced[open] .route-panel-sliders {
+  padding: 0 10px 10px;
 }
 
 /* ── Surface legend ──────────────────────────────────────────────────────── */
@@ -976,5 +1321,22 @@ body {
     font-weight: 600;
     color: #111827;
     white-space: nowrap;
+  }
+
+  /* Touch-target minimums (WCAG 2.5.5) for inner panel controls */
+  .route-panel-mode-btn,
+  .route-panel-preset,
+  .route-panel-rt-generate,
+  .route-panel-rt-regenerate,
+  .route-panel-import-gpx,
+  .route-panel-gpx,
+  .route-panel-add-via {
+    min-height: 44px;
+  }
+
+  .route-panel-waypoint-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
   }
 }
