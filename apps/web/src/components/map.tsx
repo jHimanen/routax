@@ -18,7 +18,7 @@ import { useFeatureFlags } from "../hooks/useFeatureFlags";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute, getRoute, importGpx, postRoute } from "../lib/api";
 import { SURFACE_PALETTE, buildSurfaceFeatureCollection } from "../lib/surfaces";
-import { RoutePanel } from "./RoutePanel";
+import { RoutePanel, formatDuration } from "./RoutePanel";
 
 type PlannerMode = "point_to_point" | "round_trip";
 type DirectionBias = "any" | "north" | "east" | "south" | "west";
@@ -437,10 +437,20 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   } | null>(null);
 
   const [cueCoord, setCueCoord] = useState<[number, number] | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
   });
+
+  const mobileStatusText = (() => {
+    if (result && result.distance > 0) {
+      return `${(result.distance / 1000).toFixed(1)} km · ${formatDuration(result.duration)}`;
+    }
+    if (waypoints.length > 0)
+      return `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}`;
+    return "Tap map to place start";
+  })();
 
   const applySavedRoute = useCallback((saved: SavedRoute) => {
     let restoredWaypoints: Waypoint[];
@@ -789,7 +799,25 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           plannerMode === "round_trip" && waypoints.some((w) => w.role === "start")
         }
         planningMetadata={planningMetadata}
+        panelOpen={panelOpen}
+        onTogglePanel={() => setPanelOpen((p) => !p)}
       />
+      {!panelOpen && (
+        <button
+          type="button"
+          className="mobile-panel-toggle"
+          onClick={() => setPanelOpen(true)}
+          aria-expanded={false}
+          aria-label="Open route panel"
+        >
+          Plan
+        </button>
+      )}
+      {!panelOpen && (
+        <div className="route-panel-status-chip" aria-live="polite">
+          {mobileStatusText}
+        </div>
+      )}
     </div>
   );
 }

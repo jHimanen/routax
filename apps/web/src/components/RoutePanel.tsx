@@ -77,9 +77,11 @@ interface RoutePanelProps {
   isGenerating: boolean;
   hasRoundTripStart: boolean;
   planningMetadata: PlanningMetadata | null;
+  panelOpen: boolean;
+  onTogglePanel: () => void;
 }
 
-function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) {
@@ -145,6 +147,8 @@ export function RoutePanel({
   planningMetadata,
   cueSheets,
   onCueSelect,
+  panelOpen,
+  onTogglePanel,
 }: RoutePanelProps): React.JSX.Element {
   const hasStart = waypoints.length >= 1;
   const hasFinish = waypoints.length >= 2;
@@ -315,7 +319,22 @@ export function RoutePanel({
   const hasGeneratedOnce = plannerMode === "round_trip" && waypoints.length >= 2;
 
   return (
-    <aside className={`route-panel${deepLinkLoading ? " route-panel--deeplink-load" : ""}`}>
+    <aside
+      className={[
+        "route-panel",
+        panelOpen && "route-panel--mobile-open",
+        deepLinkLoading && "route-panel--deeplink-load",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden={panelOpen ? undefined : true}
+    >
+      <button
+        type="button"
+        className="route-panel-drag-handle"
+        onClick={onTogglePanel}
+        aria-label="Close route panel"
+      />
       <div className="route-panel-mode-toggle">
         <button
           type="button"
