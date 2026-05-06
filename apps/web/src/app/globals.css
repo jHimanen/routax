@@ -459,6 +459,45 @@ body {
   color: #dc2626;
 }
 
+.route-panel-waypoint-btn--move {
+  font-size: 11px;
+  padding: 2px 6px;
+  color: #2563eb;
+}
+
+.route-panel-waypoint-btn--move:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* ── Reposition banner ───────────────────────────────────────────────────── */
+
+.reposition-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reposition-banner-cancel {
+  border: none;
+  background: none;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  min-height: 44px;
+  min-width: 44px;
+  text-align: right;
+}
+
 /* ── Via button ──────────────────────────────────────────────────────────── */
 
 .route-panel-add-via {
