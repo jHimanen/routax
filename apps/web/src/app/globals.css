@@ -114,7 +114,7 @@ body {
   align-items: flex-start;
   width: 100%;
   margin: 0;
-  padding: 8px 10px;
+  padding: 12px 10px;
   border: none;
   background: none;
   font: inherit;
@@ -1001,8 +1001,8 @@ body {
 }
 
 .routes-kebab-btn {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   border-radius: 4px;
@@ -1153,6 +1153,7 @@ body {
   display: block;
   margin: 16px auto 0;
   padding: 8px 20px;
+  min-height: 44px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
@@ -1334,9 +1335,21 @@ body {
     min-height: 44px;
   }
 
+  .route-panel-waypoint-coords {
+    display: none;
+  }
+
   .route-panel-waypoint-btn {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .route-panel-reset,
+  .route-panel-save {
+    min-height: 44px;
   }
 }
