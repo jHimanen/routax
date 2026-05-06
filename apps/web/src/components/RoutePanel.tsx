@@ -165,6 +165,7 @@ export function RoutePanel({
       : null;
   const nameId = useId();
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [clipboardError, setClipboardError] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>("none");
   const [formName, setFormName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -282,12 +283,16 @@ export function RoutePanel({
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
         setCopyFeedback(true);
+        setClipboardError(false);
         window.setTimeout(() => {
           setCopyFeedback(false);
         }, 2000);
+      } else {
+        setClipboardError(true);
       }
     } catch {
       setCopyFeedback(false);
+      setClipboardError(true);
     }
   };
 
@@ -843,11 +848,17 @@ export function RoutePanel({
             {savedUrl}
           </button>
           {copyFeedback && <span className="route-panel-saved-copy">Copied to clipboard</span>}
+          {clipboardError && (
+            <p className="route-panel-clipboard-fallback">
+              Copy manually: <span className="route-panel-clipboard-url">{savedUrl}</span>
+            </p>
+          )}
           <button
             type="button"
             className="route-panel-saved-dismiss"
             onClick={() => {
               setSavePhase("none");
+              setClipboardError(false);
             }}
           >
             Dismiss
