@@ -694,6 +694,67 @@ body {
   cursor: pointer;
 }
 
+/* ── GPX import / export ─────────────────────────────────────────────────── */
+
+.route-panel-import-gpx,
+.route-panel-gpx {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+.route-panel-import-gpx:hover:not(:disabled),
+.route-panel-gpx:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.route-panel-import-gpx:disabled,
+.route-panel-gpx:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Advanced section ────────────────────────────────────────────────────── */
+
+.route-panel-advanced {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.route-panel-advanced-summary {
+  padding: 6px 10px;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-panel-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.route-panel-advanced-summary::before {
+  content: "▶ ";
+  font-size: 9px;
+}
+
+.route-panel-advanced[open] .route-panel-advanced-summary::before {
+  content: "▼ ";
+}
+
+.route-panel-advanced[open] .route-panel-sliders {
+  padding: 0 10px 10px;
+}
+
 /* ── Surface legend ──────────────────────────────────────────────────────── */
 
 .surface-legend-unavailable {
@@ -1260,5 +1321,22 @@ body {
     font-weight: 600;
     color: #111827;
     white-space: nowrap;
+  }
+
+  /* Touch-target minimums (WCAG 2.5.5) for inner panel controls */
+  .route-panel-mode-btn,
+  .route-panel-preset,
+  .route-panel-rt-generate,
+  .route-panel-rt-regenerate,
+  .route-panel-import-gpx,
+  .route-panel-gpx,
+  .route-panel-add-via {
+    min-height: 44px;
+  }
+
+  .route-panel-waypoint-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
   }
 }
