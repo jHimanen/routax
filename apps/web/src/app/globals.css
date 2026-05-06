@@ -184,6 +184,11 @@ body {
   user-select: none;
 }
 
+/* Mobile-only elements — hidden on desktop, activated inside @media (max-width: 640px) */
+.route-panel-drag-handle { display: none; }
+.mobile-panel-toggle     { display: none; }
+.route-panel-status-chip { display: none; }
+
 .route-panel-deeplink-status {
   margin: 0 0 6px;
   font-size: 12px;
@@ -877,4 +882,93 @@ body {
 
 .app-header-nav-link:hover {
   text-decoration: underline;
+}
+
+/* ── Mobile bottom-sheet (≤ 640 px) ──────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .route-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 70vh;
+    max-height: 70dvh;
+    padding: 0 16px 16px;
+    transform: translateY(100%);
+    transition: transform 200ms ease-out;
+    z-index: 20;
+  }
+
+  .route-panel--mobile-open {
+    transform: translateY(0);
+  }
+
+  .route-panel-drag-handle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 0;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: default;
+  }
+
+  .route-panel-drag-handle::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #d1d5db;
+  }
+
+  .mobile-panel-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 22px;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 30%);
+    white-space: nowrap;
+  }
+
+  .mobile-panel-toggle:active {
+    background: #1e40af;
+  }
+
+  .route-panel-status-chip {
+    display: flex;
+    align-items: center;
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: rgb(255 255 255 / 94%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+  }
 }
