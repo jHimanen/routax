@@ -18,6 +18,9 @@ function parseFlagsJson(json: unknown): Record<string, boolean> {
 /**
  * Fetches flag booleans for the current session, cached in-process so
  * every consumer shares one HTTP round-trip.
+ *
+ * The cache is cleared on rejection so React Strict Mode's double-mount
+ * (which aborts the first fetch) doesn't permanently poison the cache.
  */
 export function fetchFlags(signal?: AbortSignal): Promise<Record<string, boolean>> {
   if (!flagsRequest) {
@@ -33,6 +36,9 @@ export function fetchFlags(signal?: AbortSignal): Promise<Record<string, boolean
       const json: unknown = await response.json();
       return parseFlagsJson(json);
     })();
+    flagsRequest.catch(() => {
+      flagsRequest = null;
+    });
   }
   return flagsRequest;
 }

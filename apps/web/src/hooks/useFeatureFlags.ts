@@ -11,18 +11,21 @@ export function useFeatureFlags(): {
   }>({ flags: {}, isReady: false });
 
   useEffect(() => {
-    const controller = new AbortController();
-    void fetchFlags(controller.signal)
+    let mounted = true;
+    // fetchFlags caches the promise module-level. Passing an AbortSignal bakes
+    // it into the shared promise: React 18 Strict Mode aborts the first mount
+    // synchronously before the remount runs, so the remount gets the same
+    // aborted promise, the AbortError is swallowed, and isReady never flips.
+    // Guard setState with a mounted flag instead.
+    void fetchFlags()
       .then((f) => {
-        setState({ flags: f, isReady: true });
+        if (mounted) setState({ flags: f, isReady: true });
       })
-      .catch((err) => {
-        if (err instanceof Error && err.name === "AbortError") return;
-        // Surface empty flags; callers treat missing keys as off.
-        setState({ flags: {}, isReady: true });
+      .catch(() => {
+        if (mounted) setState({ flags: {}, isReady: true });
       });
     return () => {
-      controller.abort();
+      mounted = false;
     };
   }, []);
 
