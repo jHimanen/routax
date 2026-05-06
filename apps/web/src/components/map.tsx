@@ -444,12 +444,15 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const [cueCoord, setCueCoord] = useState<[number, number] | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [repositionTarget, setRepositionTarget] = useState<"start" | "finish" | null>(null);
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
   });
 
   const mobileStatusText = (() => {
+    if (repositionTarget !== null)
+      return `Tap map to move ${repositionTarget === "start" ? "Start" : "Finish"}`;
     if (result && result.distance > 0) {
       return `${(result.distance / 1000).toFixed(1)} km · ${formatDuration(result.duration)}`;
     }
@@ -598,8 +601,26 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setRoundTripSeed(0);
   }, []);
 
+  const handleStartReposition = useCallback(
+    (role: "start" | "finish") => {
+      setRepositionTarget(role);
+      if (panelOpen && window.innerWidth <= 640) setPanelOpen(false);
+    },
+    [panelOpen],
+  );
+
+  const handleCancelReposition = useCallback(() => setRepositionTarget(null), []);
+
   const handleMapClick = useCallback(
     (lngLat: LatLng) => {
+      if (repositionTarget !== null) {
+        setWaypoints((prev) =>
+          prev.map((w) => (w.role === repositionTarget ? { ...w, position: lngLat } : w)),
+        );
+        setRepositionTarget(null);
+        return;
+      }
+
       if (initialRouteId && !deepLinkResolved) return;
 
       if (plannerMode === "round_trip") {
@@ -619,7 +640,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         return prev;
       });
     },
-    [initialRouteId, deepLinkResolved, plannerMode],
+    [initialRouteId, deepLinkResolved, plannerMode, repositionTarget],
   );
 
   const handleAddVia = useCallback(() => {
@@ -738,7 +759,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   }, [handleReset]);
 
   const cursorMode =
-    plannerMode === "round_trip" ? "crosshair" : waypoints.length < 2 ? "crosshair" : "grab";
+    repositionTarget !== null
+      ? "crosshair"
+      : plannerMode === "round_trip"
+        ? "crosshair"
+        : waypoints.length < 2
+          ? "crosshair"
+          : "grab";
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -808,6 +835,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         planningMetadata={planningMetadata}
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((p) => !p)}
+        repositionTarget={repositionTarget}
+        onStartReposition={handleStartReposition}
+        onCancelReposition={handleCancelReposition}
       />
       {!panelOpen && (
         <button

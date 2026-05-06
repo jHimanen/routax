@@ -79,6 +79,9 @@ interface RoutePanelProps {
   planningMetadata: PlanningMetadata | null;
   panelOpen: boolean;
   onTogglePanel: () => void;
+  repositionTarget: "start" | "finish" | null;
+  onStartReposition: (role: "start" | "finish") => void;
+  onCancelReposition: () => void;
 }
 
 export function formatDuration(seconds: number): string {
@@ -149,6 +152,9 @@ export function RoutePanel({
   onCueSelect,
   panelOpen,
   onTogglePanel,
+  repositionTarget,
+  onStartReposition,
+  onCancelReposition,
 }: RoutePanelProps): React.JSX.Element {
   const hasStart = waypoints.length >= 1;
   const hasFinish = waypoints.length >= 2;
@@ -335,6 +341,19 @@ export function RoutePanel({
         onClick={onTogglePanel}
         aria-label="Close route panel"
       />
+      {repositionTarget && (
+        <output className="reposition-banner" aria-live="polite">
+          <span>Tap the map to move {repositionTarget === "start" ? "Start" : "Finish"}</span>
+          <button
+            type="button"
+            className="reposition-banner-cancel"
+            onClick={onCancelReposition}
+            aria-label="Cancel reposition"
+          >
+            Cancel
+          </button>
+        </output>
+      )}
       <div className="route-panel-mode-toggle">
         <button
           type="button"
@@ -568,6 +587,19 @@ export function RoutePanel({
                       title="Remove"
                     >
                       ✕
+                    </button>
+                  </span>
+                )}
+                {(w.role === "start" || w.role === "finish") && (
+                  <span className="route-panel-waypoint-actions">
+                    <button
+                      type="button"
+                      className="route-panel-waypoint-btn route-panel-waypoint-btn--move"
+                      onClick={() => onStartReposition(w.role as "start" | "finish")}
+                      aria-label={`Move ${w.role} point`}
+                      title="Move"
+                    >
+                      Move
                     </button>
                   </span>
                 )}
