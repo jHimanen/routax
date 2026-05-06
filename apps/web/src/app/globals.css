@@ -195,6 +195,132 @@ body {
   display: none;
 }
 
+/* ── Mode toggle ────────────────────────────────────────────────────────── */
+
+.route-panel-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.route-panel-mode-btn {
+  padding: 6px 8px;
+  border: none;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.route-panel-mode-btn:first-child {
+  border-right: 1px solid #d1d5db;
+}
+
+.route-panel-mode-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.route-panel-mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-mode-btn--active {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.route-panel-mode-btn--active:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+/* ── Round-trip controls ─────────────────────────────────────────────────── */
+
+.route-panel-roundtrip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.route-panel-roundtrip-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.route-panel-rt-input,
+.route-panel-rt-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  background: #fff;
+}
+
+.route-panel-rt-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.route-panel-rt-generate,
+.route-panel-rt-regenerate {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-panel-rt-generate {
+  flex: 1;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.route-panel-rt-generate:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.route-panel-rt-generate:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-rt-regenerate {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.route-panel-rt-regenerate:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.route-panel-rt-regenerate:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.route-panel-rt-pill {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #eff6ff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d4ed8;
+  text-align: center;
+}
+
 .route-panel-deeplink-status {
   margin: 0 0 6px;
   font-size: 12px;
