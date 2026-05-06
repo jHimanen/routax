@@ -1061,9 +1061,15 @@ body {
     align-items: center;
   }
 
-  .routes-row-name     { grid-area: name; }
-  .routes-row-meta     { grid-area: meta; }
-  .routes-kebab-wrapper { grid-area: kebab; }
+  .routes-row-name {
+    grid-area: name;
+  }
+  .routes-row-meta {
+    grid-area: meta;
+  }
+  .routes-kebab-wrapper {
+    grid-area: kebab;
+  }
 }
 
 /* Rename inline editor */
