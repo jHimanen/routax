@@ -739,6 +739,19 @@ body {
   cursor: pointer;
 }
 
+.route-panel-clipboard-fallback {
+  margin: 0;
+  font-size: 11px;
+  color: #374151;
+}
+
+.route-panel-clipboard-url {
+  user-select: all;
+  -webkit-user-select: all;
+  color: #1d4ed8;
+  word-break: break-all;
+}
+
 /* ── GPX import / export ─────────────────────────────────────────────────── */
 
 .route-panel-import-gpx,
