@@ -52,3 +52,6 @@ infra/docker/graphhopper/data/*
 # Routax wiki (Obsidian vault — not part of the app)
 routax-wiki/
 .vscode/
+
+# Claude Code agent worktrees (local-only, machine-specific)
+.claude/worktrees/
