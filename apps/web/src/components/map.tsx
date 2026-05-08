@@ -113,9 +113,9 @@ function makeWaypointId(): string {
 }
 
 const MARKER_COLORS: Record<Waypoint["role"], string> = {
-  start: "#22c55e",
-  finish: "#ef4444",
-  via: "#3b82f6",
+  start: "#3a4a38",  // pine
+  finish: "#c2682a", // ochre
+  via: "#7a766b",    // muted
 };
 
 // MapLibre paint expression: colors route segments by surface class.
@@ -126,7 +126,7 @@ const SURFACE_PAINT_EXPRESSION = [
   "match",
   ["get", "surface"],
   ...Object.entries(SURFACE_PALETTE).flat(),
-  "#3b82f6", // fallback: features without a surface property render solid blue
+  "#c2682a", // fallback: features without a surface property render ochre
 ] as unknown as maplibregl.ExpressionSpecification;
 
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
@@ -364,8 +364,8 @@ function RoutaxMap({
           source: HOVER_SOURCE,
           paint: {
             "circle-radius": 6,
-            "circle-color": "#ffffff",
-            "circle-stroke-color": "#3b82f6",
+            "circle-color": "#faf6ec",
+            "circle-stroke-color": "#c2682a",
             "circle-stroke-width": 2,
           },
         });

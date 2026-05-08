@@ -1,14 +1,14 @@
 import type { SurfaceClass } from "@routax/shared";
 
 export const SURFACE_PALETTE: Record<SurfaceClass, string> = {
-  asphalt: "#4b5563",
-  paved_rough: "#6b7280",
-  compacted: "#92400e",
-  gravel: "#d97706",
-  sand: "#fbbf24",
-  unpaved: "#78350f",
-  wood: "#166534",
-  unknown: "#9ca3af",
+  asphalt:     "#3a4a38", // pine — smooth paved
+  paved_rough: "#4a5f48", // lighter pine — worn paved
+  compacted:   "#9aa982", // lichen — hardpack/compacted gravel
+  gravel:      "#c2682a", // ochre — off-road accent
+  sand:        "#c2682a", // ochre — sandy tracks
+  unpaved:     "#b05025", // deep ochre — raw unpaved dirt
+  wood:        "#9aa982", // lichen — boardwalk/path
+  unknown:     "#c5bca7", // warm gray
 };
 
 export const SURFACE_LABELS: Record<SurfaceClass, string> = {
