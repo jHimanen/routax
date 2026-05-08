@@ -46,16 +46,7 @@ export function LogoMark({
       style={{ display: "block" }}
       aria-hidden="true"
     >
-      {ring && (
-        <circle
-          cx="100"
-          cy="100"
-          r="92"
-          stroke={fg}
-          strokeWidth="2"
-          opacity=".22"
-        />
-      )}
+      {ring && <circle cx="100" cy="100" r="92" stroke={fg} strokeWidth="2" opacity=".22" />}
       <path
         d="M44 148 Q72 110 92 116 Q120 124 124 92 Q126 60 156 56"
         stroke={accent}

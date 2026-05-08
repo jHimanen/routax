@@ -113,9 +113,9 @@ function makeWaypointId(): string {
 }
 
 const MARKER_COLORS: Record<Waypoint["role"], string> = {
-  start: "#3a4a38",  // pine
+  start: "#3a4a38", // pine
   finish: "#c2682a", // ochre
-  via: "#7a766b",    // muted
+  via: "#7a766b", // muted
 };
 
 // MapLibre paint expression: colors route segments by surface class.

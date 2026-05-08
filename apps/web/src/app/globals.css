@@ -2,39 +2,39 @@
   /* ── Tundra colour tokens ────────────────────────────────────────────────── */
 
   /* Backgrounds */
-  --color-bg:          #f3ede0;
-  --color-paper:       #faf6ec;
-  --color-cream:       #f8f3e6;
+  --color-bg: #f3ede0;
+  --color-paper: #faf6ec;
+  --color-cream: #f8f3e6;
 
   /* Text */
-  --color-ink:         #2b2a26;
-  --color-ink-2:       #4a4740;
-  --color-muted:       #7a766b;
+  --color-ink: #2b2a26;
+  --color-ink-2: #4a4740;
+  --color-muted: #7a766b;
 
   /* Borders */
-  --color-bd:          #d8d0bf;
-  --color-bd-soft:     #e8e1cf;
+  --color-bd: #d8d0bf;
+  --color-bd-soft: #e8e1cf;
 
   /* Brand palette */
-  --color-pine:        #3a4a38;
-  --color-pine-deep:   #28341f;
-  --color-lichen:      #9aa982;
+  --color-pine: #3a4a38;
+  --color-pine-deep: #28341f;
+  --color-lichen: #9aa982;
   --color-lichen-soft: #c8d0b6;
-  --color-ochre:       #c2682a;
-  --color-ochre-soft:  #f3e3cf;
-  --color-ochre-deep:  #8e4716;
+  --color-ochre: #c2682a;
+  --color-ochre-soft: #f3e3cf;
+  --color-ochre-deep: #8e4716;
 
   /* Semantic */
-  --color-error:       #dc2626;
-  --color-error-bg:    #fef2f2;
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
 
   /* Shadows */
-  --shadow-sm: 0 1px 0 rgba(0, 0, 0, .04), 0 6px 14px rgba(72, 60, 40, .08);
-  --shadow:    0 1px 0 rgba(0, 0, 0, .04), 0 14px 32px rgba(72, 60, 40, .13);
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.04), 0 6px 14px rgba(72, 60, 40, 0.08);
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 14px 32px rgba(72, 60, 40, 0.13);
 
   /* Typography */
-  --font-sans: 'Archivo', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
   font-family: var(--font-sans);
   color-scheme: light;
@@ -1467,7 +1467,7 @@ body {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 2px 12px rgba(72, 60, 40, .30);
+    box-shadow: 0 2px 12px rgba(72, 60, 40, 0.3);
     white-space: nowrap;
   }
 
