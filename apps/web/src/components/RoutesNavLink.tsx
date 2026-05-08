@@ -6,7 +6,7 @@ export function RoutesNavLink() {
   const { flags, isReady } = useFeatureFlags();
   if (!isReady || !flags.saved_routes_ui) return null;
   return (
-    <a href="/routes" className="app-header-nav-link">
+    <a href="/routes" className="app-header-routes-link">
       My routes
     </a>
   );

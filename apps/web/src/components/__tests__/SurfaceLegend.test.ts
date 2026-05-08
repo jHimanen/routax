@@ -76,9 +76,12 @@ describe("SurfaceLegend — palette and label completeness", () => {
     }
   });
 
-  it("all palette colors are distinct", () => {
+  it("palette has at least 4 distinct colours (Tundra surface vocabulary)", () => {
     const colors = ALL_CLASSES.map((cls) => SURFACE_PALETTE[cls]);
     const unique = new Set(colors);
-    expect(unique.size).toBe(ALL_CLASSES.length);
+    // Tundra groups surface types into 4 visual categories:
+    // paved (pine), loose (ochre), path (lichen), unknown (warm gray).
+    // Related types share a colour by design; minimum 4 distinct values required.
+    expect(unique.size).toBeGreaterThanOrEqual(4);
   });
 });

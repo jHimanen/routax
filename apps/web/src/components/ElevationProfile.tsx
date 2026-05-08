@@ -150,7 +150,7 @@ export function ElevationProfile({
         className="elevation-profile-label"
         x="2"
         y={VIEWBOX_H - 2}
-        style={{ fontSize: 7, fill: "#9ca3af", fontFamily: "inherit" }}
+        style={{ fontSize: 7, fill: "#7a766b", fontFamily: "var(--font-mono, monospace)" }}
       >
         0 km
       </text>
@@ -159,7 +159,7 @@ export function ElevationProfile({
         x={VIEWBOX_W - 2}
         y={VIEWBOX_H - 2}
         textAnchor="end"
-        style={{ fontSize: 7, fill: "#9ca3af", fontFamily: "inherit" }}
+        style={{ fontSize: 7, fill: "#7a766b", fontFamily: "var(--font-mono, monospace)" }}
       >
         {totalKm.toFixed(1)} km
       </text>
@@ -174,13 +174,13 @@ export function ElevationProfile({
             x2={trackerX}
             y2={VIEWBOX_H}
           />
-          {isPinned && <circle cx={trackerX} cy={4} r={3} fill="#3b82f6" />}
+          {isPinned && <circle cx={trackerX} cy={4} r={3} fill="#c2682a" />}
           <text
             className="elevation-profile-tooltip"
             x={trackerX + (trackerX > VIEWBOX_W * 0.75 ? -3 : 3)}
             y={8}
             textAnchor={trackerX > VIEWBOX_W * 0.75 ? "end" : "start"}
-            style={{ fontSize: 8, fill: "#111827", fontFamily: "inherit" }}
+            style={{ fontSize: 8, fill: "#2b2a26", fontFamily: "var(--font-mono, monospace)" }}
           >
             {Math.round(tooltipElevation)} m
           </text>
