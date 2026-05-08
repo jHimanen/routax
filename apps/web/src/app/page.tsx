@@ -1,3 +1,4 @@
+import { LogoMark } from "../components/LogoMark";
 import { RoutesNavLink } from "../components/RoutesNavLink";
 import { RouteMap } from "../components/map";
 
@@ -15,7 +16,9 @@ export default async function HomePage({
   return (
     <main className="app-shell">
       <header className="app-header">
-        Routax
+        <LogoMark size={28} />
+        <span className="app-header-wordmark">Routax</span>
+        <span className="app-header-divider" />
         <RoutesNavLink />
       </header>
       <RouteMap initialRouteId={route} />
