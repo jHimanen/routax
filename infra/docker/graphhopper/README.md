@@ -109,6 +109,27 @@ this list:
 make osm-reimport -- --force
 ```
 
+## Ferry exclusion
+
+By default, all routing requests exclude OSM ferry edges (`route=ferry`).
+This is intentional: the Finnish OSM ferry set is noisy (cargo links,
+seasonal ice roads, mis-tagged shipping lanes alongside genuine public
+crossings), and the routing optimiser otherwise treats ferry edges as cheap
+shortcuts across open water.
+
+The exclusion is applied in two places:
+
+| Layer | File | Mechanism |
+|---|---|---|
+| GraphHopper base profile | `custom_models/bike-base.json` | `priority: road_environment == FERRY → multiply_by 0` |
+| Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Same rule emitted by `buildCustomModel()` for all four presets |
+
+`road_environment` is part of GraphHopper's automatic encoded-value set and
+is already indexed — no graph rebuild is required. A
+`docker compose restart graphhopper` picks up changes to `bike-base.json`.
+
+A future "Allow ferries" user toggle is explicitly deferred to Phase 4+.
+
 ## Custom model parameters (v0)
 
 `custom_models/v0-cycling.json` documents the three Routax profile parameters.
