@@ -69,12 +69,13 @@ curl -X POST http://localhost:8989/route \
 
 ## Indexed encoded values
 
-The graph indexes two encoded values:
+The graph indexes three encoded values:
 
 | Encoded value | Why |
 |---|---|
 | `average_slope` | Enables the `max_gradient` routing parameter (Phase 2+) |
 | `surface` | Per-segment surface type; drives the "Avoid gravel" preset (Task 05), polyline coloring (Task 08), and GPX import segment typing (Task 10) |
+| `road_environment` | Edge environment class (ROAD, FERRY, TUNNEL, BRIDGE, …); used by the ferry exclusion rule in `bike-base.json` (Task 22) |
 
 ### Surface controlled vocabulary
 
