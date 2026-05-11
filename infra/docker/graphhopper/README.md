@@ -16,7 +16,7 @@ make up
 The first boot imports the OSM data and builds the routing graph. This
 takes **3–8 minutes** for Finland. Subsequent boots skip the import and
 start in a few seconds (the graph is cached in
-`infra/docker/graphhopper/data/graph-cache/`).
+`infra/docker/graphhopper/data/default-gh/`).
 
 Watch the import progress:
 
@@ -45,9 +45,22 @@ make smoke-test
 | Health | `http://localhost:8989/health` |
 | Info | `http://localhost:8989/info` |
 
+## Docker image
+
+The service uses `israelhikingmap/graphhopper:11.0` — a specific version
+tag, not `:latest`. Floating on `:latest` caused silent surprises during
+development (Task 05 hit a runtime enum-mismatch where `EARTH` was not a
+member of the `Surface` enum in whatever nightly build was pulled that
+week). Pinning the tag makes encoder behaviour and enum membership
+reproducible across machines.
+
+Changing the image tag requires `make osm-reimport -- --force` to
+rebuild the graph; the old graph is incompatible with a different encoder
+binary.
+
 ## Routing requests
 
-The service exposes one profile: `bike_custom` (vehicle=bike, weighting=custom).
+The service exposes one profile: `bike` (vehicle=bike, weighting=custom).
 
 All routing requests must use **POST** (GraphHopper Custom Models are POST-only):
 
@@ -56,7 +69,8 @@ curl -X POST http://localhost:8989/route \
   -H "Content-Type: application/json" \
   -d '{
     "points": [[25.0097, 60.1699], [24.9506, 60.1791]],
-    "profile": "bike_custom",
+    "profile": "bike",
+    "ch.disable": true,
     "custom_model": {
       "priority": [
         {"if": "road_class == PRIMARY", "multiply_by": "0.1"},
@@ -69,13 +83,32 @@ curl -X POST http://localhost:8989/route \
 
 ## Indexed encoded values
 
-The graph indexes three encoded values:
+The graph indexes eleven encoded values. Any of these can be requested in
+`details=` on a `/route` call to get per-segment arrays.
 
-| Encoded value | Why |
+### Computed at import
+
+| Encoded value | Description |
 |---|---|
-| `average_slope` | Enables the `max_gradient` routing parameter (Phase 2+) |
-| `surface` | Per-segment surface type; drives the "Avoid gravel" preset (Task 05), polyline coloring (Task 08), and GPX import segment typing (Task 10) |
-| `road_environment` | Edge environment class (ROAD, FERRY, TUNNEL, BRIDGE, …); used by the ferry exclusion rule in `bike-base.json` (Task 22) |
+| `average_slope` | Average gradient per edge (%), derived from SRTM elevation data |
+
+### From OSM tags
+
+| Encoded value | OSM source | Description / enum values |
+|---|---|---|
+| `surface` | `surface=*` | 8 normalised classes — see table below |
+| `road_class` | `highway=*` | Road hierarchy: `PRIMARY`, `SECONDARY`, `TERTIARY`, `RESIDENTIAL`, `UNCLASSIFIED`, `CYCLEWAY`, `PATH`, `LIVING_STREET`, `TRACK`, `ROAD`, `OTHER` |
+| `road_environment` | Derived from way type | Edge context: `ROAD`, `FERRY`, `TUNNEL`, `BRIDGE`, `FORD` |
+| `road_access` | `access=*`, `bicycle=*` | Access restriction: `PRIVATE`, `DESTINATION`, `CUSTOMERS`, `FORESTRY`, `AGRICULTURAL`, `PERMISSIVE`, `NO` |
+| `max_speed` | `maxspeed=*` | Posted limit in km/h; edges without a signed limit default to the country standard (Finland: 50 km/h urban / 80 km/h rural) — not `null`, always an integer |
+| `track_type` | `tracktype=*` | Track firmness: `GRADE1` (solid, paved) through `GRADE5` (very soft, unrideable for most bikes) |
+| `smoothness` | `smoothness=*` | Pavement quality: `EXCELLENT`, `GOOD`, `INTERMEDIATE`, `BAD`, `VERY_BAD`, `HORRIBLE`, `VERY_HORRIBLE`, `IMPASSABLE` |
+| `bike_network` | `route=bicycle` relations | OSM cycling network membership: `MISSING`, `LOCAL`, `REGIONAL`, `NATIONAL`, `INTERNATIONAL` |
+| `lit` | `lit=*` | Boolean — edge is illuminated (relevant for audax/brevet night legs) |
+| `mtb_rating` | `mtb:scale=*` | MTB difficulty 0–6 (Singletrail-Skala); coverage in Finland is concentrated on known MTB areas |
+
+For OSM tag vocabulary depth see the
+[osm-cycling-tags wiki page](../../routax-wiki/concepts/data/osm-cycling-tags.md).
 
 ### Surface controlled vocabulary
 
@@ -96,19 +129,29 @@ The `surface` encoded value is normalised from raw OSM `surface=*` tags into
 `unknown` is a first-class value, not an error — roughly half of Finnish
 forest tracks lack a `surface` tag in OSM.
 
-`smoothness` is not indexed. Its memory cost will be evaluated after the
-`surface`-only rebuild baseline is established.
+### Using encoded values in custom models
+
+Enum-valued EVs (e.g. `road_class`, `surface`, `smoothness`) must use
+only enum constants that GH exposes. Guessing an enum name causes HTTP 400
+at request time (Task 05 as-built documents this failure mode). Always
+verify against GH's `*_ev.java` source for the pinned version, or test
+with a one-off `/route` call before writing a custom-model rule.
+
+`max_speed` is a numeric EV, not an enum: use `max_speed > 80`, not
+`max_speed == "none"`.
 
 ### Rebuild requirement
 
-`graph.encoded_values` is baked into the graph at import time. Adding an
-encoded value without rebuilding the graph causes GH to route against the old
-graph and return no surface details. Always force a rebuild after changing
-this list:
+`graph.encoded_values` is baked into the graph at import time. Adding,
+removing, or reordering encoded values — or changing the image tag —
+requires a full rebuild:
 
 ```bash
 make osm-reimport -- --force
 ```
+
+A container restart alone is not sufficient; GH fingerprints the profile
+config and refuses to load if the hash has changed.
 
 ## Ferry exclusion
 
@@ -125,18 +168,6 @@ The exclusion is applied in two places:
 | GraphHopper base profile | `custom_models/bike-base.json` | `priority: road_environment == FERRY → multiply_by 0` |
 | Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Same rule emitted by `buildCustomModel()` for all four presets |
 
-`road_environment` is part of GraphHopper's automatic encoded-value set and
-is already indexed. However, **changing `bike-base.json` requires a graph
-rebuild**: GraphHopper fingerprints the content of `custom_model_files` when
-it builds the graph and rejects loading if the hash has changed. Clear the
-cache and reimport:
-
-```bash
-rm -rf infra/docker/graphhopper/data/default-gh
-docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
-# Wait 3–8 min for the Finland import to finish.
-```
-
 A future "Allow ferries" user toggle is explicitly deferred to Phase 4+.
 
 ## Custom model parameters (v0)
@@ -149,14 +180,7 @@ GraphHopper priority multipliers:
 |---|---|---|
 | `avoid_traffic` | 0–1 | PRIMARY: `1 - t*0.9`; SECONDARY: `1 - t*0.5` |
 | `prefer_quiet_surfaces` | 0–1 | road_class CYCLEWAY/TRACK/LIVING_STREET/PATH: `1 + q*0.8` |
-| `max_gradient` | 0–15% | **Not active in Phase 1** — see note below |
-
-### max_gradient limitation
-
-GraphHopper encodes slope from elevation data. Standard Geofabrik PBF
-extracts do **not** include elevation. The `max_gradient` parameter has no
-effect until SRTM elevation data is integrated (planned for Phase 3+).
-The rule is omitted from `v0-cycling.json` to avoid silent no-ops.
+| `max_gradient` | 0–15% | Edges steeper than `max_gradient` are penalised to near-zero priority |
 
 ## Swapping the OSM extract
 
@@ -175,18 +199,22 @@ To route a different region (e.g. Sweden):
 
 3. Invalidate the graph cache and rebuild:
    ```bash
-   rm -rf infra/docker/graphhopper/data/default-gh
-   docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
+   make osm-reimport -- --force
    ```
 
 ## Invalidating the graph cache
 
-The cache must be cleared whenever the config or OSM extract changes:
+The cache must be cleared whenever the config, encoded values, or OSM
+extract changes:
 
 ```bash
 rm -rf infra/docker/graphhopper/data/default-gh
 make up
 ```
+
+Note: `config.yml` sets `graph.location: /data/graph-cache` but this key
+is silently ignored by GH 11.x, which falls back to its hardcoded default
+`default-gh`. Scripts and docs use `data/default-gh/` as the actual path.
 
 ## Reading GraphHopper logs
 
