@@ -71,43 +71,40 @@ describe("GraphhopperRoutingProvider", () => {
     // road_environment is requested here only for test verification — it is
     // not part of the production response shape.
 
-    it.skipIf(skip)(
-      "Korpo→Houtskär route contains no ferry segments after exclusion",
-      async () => {
-        const ghUrl = process.env.GRAPHHOPPER_URL as string;
-        const body = {
-          points: [
-            [21.5683, 60.1718],
-            [21.3667, 60.2167],
-          ],
-          profile: "bike",
-          points_encoded: false,
-          "ch.disable": true,
-          details: ["road_environment"],
-          custom_model: {
-            priority: [{ if: "road_environment == FERRY", multiply_by: "0" }],
-            distance_influence: 70,
-          },
-        };
-        const res = await fetch(`${ghUrl}/route`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          // Unroutable — ferry excluded and no land path between these islands.
-          return;
-        }
-        const data = (await res.json()) as {
-          paths: Array<{
-            details?: { road_environment?: Array<[number, number, string]> };
-          }>;
-        };
-        const envDetails = data.paths[0]?.details?.road_environment ?? [];
-        const hasFerry = envDetails.some(([, , val]) => val === "FERRY");
-        expect(hasFerry).toBe(false);
-      },
-    );
+    it.skipIf(skip)("Korpo→Houtskär route contains no ferry segments after exclusion", async () => {
+      const ghUrl = process.env.GRAPHHOPPER_URL as string;
+      const body = {
+        points: [
+          [21.5683, 60.1718],
+          [21.3667, 60.2167],
+        ],
+        profile: "bike",
+        points_encoded: false,
+        "ch.disable": true,
+        details: ["road_environment"],
+        custom_model: {
+          priority: [{ if: "road_environment == FERRY", multiply_by: "0" }],
+          distance_influence: 70,
+        },
+      };
+      const res = await fetch(`${ghUrl}/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        // Unroutable — ferry excluded and no land path between these islands.
+        return;
+      }
+      const data = (await res.json()) as {
+        paths: Array<{
+          details?: { road_environment?: Array<[number, number, string]> };
+        }>;
+      };
+      const envDetails = data.paths[0]?.details?.road_environment ?? [];
+      const hasFerry = envDetails.some(([, , val]) => val === "FERRY");
+      expect(hasFerry).toBe(false);
+    });
 
     it.skipIf(skip)(
       "Sulkava→Puumala route contains no ferry segments after exclusion",
