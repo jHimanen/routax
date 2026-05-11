@@ -6,6 +6,7 @@
 set -euo pipefail
 
 BASE="https://localhost"
+GH_URL="${GH_URL:-http://localhost:8989}"
 PASS=0
 FAIL=0
 
@@ -87,6 +88,56 @@ check_surfaces() {
   fi
 }
 
+check_encoded_values() {
+  local label="$1"
+  local details_json='["road_class","road_environment","road_access","max_speed","track_type","smoothness","bike_network","mtb_rating"]'
+  local evs=("road_class" "road_environment" "road_access" "max_speed" "track_type" "smoothness" "bike_network" "mtb_rating")
+
+  local tmpfile
+  tmpfile=$(mktemp)
+  local status
+  status=$(curl -sk -o "$tmpfile" -w "%{http_code}" -X POST "${GH_URL}/route" \
+    -H "Content-Type: application/json" \
+    -d "{\"points\":[[23.760,61.498],[25.747,62.243]],\"profile\":\"bike\",\"ch.disable\":true,\"details\":${details_json}}")
+  local response
+  response=$(cat "$tmpfile")
+  rm -f "$tmpfile"
+
+  if [ "$status" = "200" ]; then
+    echo "PASS [$label/ev-status] ${GH_URL}/route → 200"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL [$label/ev-status] ${GH_URL}/route → $status (expected 200)"
+    FAIL=$((FAIL + 1))
+    return
+  fi
+
+  local all_present=true
+  for ev in "${evs[@]}"; do
+    local has
+    has=$(echo "$response" | jq --arg ev "$ev" '.paths[0].details | has($ev)')
+    if [ "$has" != "true" ]; then
+      echo "FAIL [$label/ev-present] missing key: $ev"
+      FAIL=$((FAIL + 1))
+      all_present=false
+    fi
+  done
+  $all_present && {
+    echo "PASS [$label/ev-present] all ${#evs[@]} EV keys present in paths[0].details"
+    PASS=$((PASS + 1))
+  }
+
+  local non_empty
+  non_empty=$(echo "$response" | jq '[.paths[0].details | to_entries[] | select(.value | length > 0)] | length')
+  if [ "$non_empty" -ge 3 ]; then
+    echo "PASS [$label/ev-populated] $non_empty EVs have non-empty range arrays (≥3 required)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL [$label/ev-populated] only $non_empty EVs have non-empty range arrays (≥3 required)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
 echo "Smoke — entry: $BASE"
 echo ""
 
@@ -102,6 +153,10 @@ check_elevation "tampere-jyvaskyla" \
   '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
 check_surfaces "tampere-jyvaskyla" \
   '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
+
+# Verify all nine newly-indexed EVs are queryable directly from GraphHopper.
+# Calls GH at $GH_URL (not through the Routax API, which does not expose details=).
+check_encoded_values "tampere-jyvaskyla"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
