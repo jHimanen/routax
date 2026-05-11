@@ -83,7 +83,7 @@ curl -X POST http://localhost:8989/route \
 
 ## Indexed encoded values
 
-The graph indexes eleven encoded values. Any of these can be requested in
+The graph indexes ten encoded values. Any of these can be requested in
 `details=` on a `/route` call to get per-segment arrays.
 
 ### Computed at import
@@ -97,15 +97,21 @@ The graph indexes eleven encoded values. Any of these can be requested in
 | Encoded value | OSM source | Description / enum values |
 |---|---|---|
 | `surface` | `surface=*` | 8 normalised classes — see table below |
-| `road_class` | `highway=*` | Road hierarchy: `PRIMARY`, `SECONDARY`, `TERTIARY`, `RESIDENTIAL`, `UNCLASSIFIED`, `CYCLEWAY`, `PATH`, `LIVING_STREET`, `TRACK`, `ROAD`, `OTHER` |
+| `road_class` | `highway=*` | Road hierarchy: `OTHER`, `MOTORWAY`, `TRUNK`, `PRIMARY`, `SECONDARY`, `TERTIARY`, `RESIDENTIAL`, `UNCLASSIFIED`, `SERVICE`, `ROAD`, `TRACK`, `CYCLEWAY`, `PATH`, `LIVING_STREET`, and more |
 | `road_environment` | Derived from way type | Edge context: `ROAD`, `FERRY`, `TUNNEL`, `BRIDGE`, `FORD` |
-| `road_access` | `access=*`, `bicycle=*` | Access restriction: `PRIVATE`, `DESTINATION`, `CUSTOMERS`, `FORESTRY`, `AGRICULTURAL`, `PERMISSIVE`, `NO` |
-| `max_speed` | `maxspeed=*` | Posted limit in km/h; edges without a signed limit default to the country standard (Finland: 50 km/h urban / 80 km/h rural) — not `null`, always an integer |
-| `track_type` | `tracktype=*` | Track firmness: `GRADE1` (solid, paved) through `GRADE5` (very soft, unrideable for most bikes) |
-| `smoothness` | `smoothness=*` | Pavement quality: `EXCELLENT`, `GOOD`, `INTERMEDIATE`, `BAD`, `VERY_BAD`, `HORRIBLE`, `VERY_HORRIBLE`, `IMPASSABLE` |
-| `bike_network` | `route=bicycle` relations | OSM cycling network membership: `MISSING`, `LOCAL`, `REGIONAL`, `NATIONAL`, `INTERNATIONAL` |
-| `lit` | `lit=*` | Boolean — edge is illuminated (relevant for audax/brevet night legs) |
-| `mtb_rating` | `mtb:scale=*` | MTB difficulty 0–6 (Singletrail-Skala); coverage in Finland is concentrated on known MTB areas |
+| `road_access` | `access=*`, `bicycle=*` | Access restriction: `YES`, `DESTINATION`, `CUSTOMERS`, `DELIVERY`, `PRIVATE`, `AGRICULTURAL`, `FORESTRY`, `NO` |
+| `max_speed` | `maxspeed=*` | Posted limit in km/h; edges without a signed limit default to the country standard (Finland: 50 km/h urban / 80 km/h rural) — always an integer, never `null` |
+| `track_type` | `tracktype=*` | Track firmness: `MISSING`, `GRADE1` (solid, paved) through `GRADE5` (very soft, unrideable for most bikes) |
+| `smoothness` | `smoothness=*` | Pavement quality: `MISSING`, `EXCELLENT`, `GOOD`, `INTERMEDIATE`, `BAD`, `VERY_BAD`, `HORRIBLE`, `VERY_HORRIBLE`, `IMPASSABLE`, `OTHER` |
+| `bike_network` | `route=bicycle` relations | OSM cycling network membership: `MISSING`, `LOCAL`, `REGIONAL`, `NATIONAL`, `INTERNATIONAL`, `OTHER` |
+| `mtb_rating` | `mtb:scale=*` | MTB difficulty — numeric (0–6, Singletrail-Skala); use `mtb_rating > 2` in custom-model rules, not an enum comparison |
+
+`lit` (`lit=*`, boolean illumination) was planned but is not a recognised encoded value in
+GH 11.0. It will be revisited when the image is upgraded to a version that supports it.
+
+**Enum discipline:** Always verify enum constants against the `/info` response for the
+running image before writing a custom-model rule. Do not guess — an unrecognised constant
+produces HTTP 400 at request time.
 
 For OSM tag vocabulary depth see the
 [osm-cycling-tags wiki page](../../routax-wiki/concepts/data/osm-cycling-tags.md).

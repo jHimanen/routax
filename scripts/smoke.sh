@@ -90,8 +90,8 @@ check_surfaces() {
 
 check_encoded_values() {
   local label="$1"
-  local details_json='["road_class","road_environment","road_access","max_speed","track_type","smoothness","bike_network","lit","mtb_rating"]'
-  local evs=("road_class" "road_environment" "road_access" "max_speed" "track_type" "smoothness" "bike_network" "lit" "mtb_rating")
+  local details_json='["road_class","road_environment","road_access","max_speed","track_type","smoothness","bike_network","mtb_rating"]'
+  local evs=("road_class" "road_environment" "road_access" "max_speed" "track_type" "smoothness" "bike_network" "mtb_rating")
 
   local tmpfile
   tmpfile=$(mktemp)
