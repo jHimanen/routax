@@ -69,12 +69,13 @@ curl -X POST http://localhost:8989/route \
 
 ## Indexed encoded values
 
-The graph indexes two encoded values:
+The graph indexes three encoded values:
 
 | Encoded value | Why |
 |---|---|
 | `average_slope` | Enables the `max_gradient` routing parameter (Phase 2+) |
 | `surface` | Per-segment surface type; drives the "Avoid gravel" preset (Task 05), polyline coloring (Task 08), and GPX import segment typing (Task 10) |
+| `road_environment` | Edge environment class (ROAD, FERRY, TUNNEL, BRIDGE, …); used by the ferry exclusion rule in `bike-base.json` (Task 22) |
 
 ### Surface controlled vocabulary
 
@@ -108,6 +109,35 @@ this list:
 ```bash
 make osm-reimport -- --force
 ```
+
+## Ferry exclusion
+
+By default, all routing requests exclude OSM ferry edges (`route=ferry`).
+This is intentional: the Finnish OSM ferry set is noisy (cargo links,
+seasonal ice roads, mis-tagged shipping lanes alongside genuine public
+crossings), and the routing optimiser otherwise treats ferry edges as cheap
+shortcuts across open water.
+
+The exclusion is applied in two places:
+
+| Layer | File | Mechanism |
+|---|---|---|
+| GraphHopper base profile | `custom_models/bike-base.json` | `priority: road_environment == FERRY → multiply_by 0` |
+| Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Same rule emitted by `buildCustomModel()` for all four presets |
+
+`road_environment` is part of GraphHopper's automatic encoded-value set and
+is already indexed. However, **changing `bike-base.json` requires a graph
+rebuild**: GraphHopper fingerprints the content of `custom_model_files` when
+it builds the graph and rejects loading if the hash has changed. Clear the
+cache and reimport:
+
+```bash
+rm -rf infra/docker/graphhopper/data/default-gh
+docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
+# Wait 3–8 min for the Finland import to finish.
+```
+
+A future "Allow ferries" user toggle is explicitly deferred to Phase 4+.
 
 ## Custom model parameters (v0)
 
@@ -145,8 +175,8 @@ To route a different region (e.g. Sweden):
 
 3. Invalidate the graph cache and rebuild:
    ```bash
-   rm -rf infra/docker/graphhopper/data/graph-cache
-   make up
+   rm -rf infra/docker/graphhopper/data/default-gh
+   docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
    ```
 
 ## Invalidating the graph cache
@@ -154,7 +184,7 @@ To route a different region (e.g. Sweden):
 The cache must be cleared whenever the config or OSM extract changes:
 
 ```bash
-rm -rf infra/docker/graphhopper/data/graph-cache
+rm -rf infra/docker/graphhopper/data/default-gh
 make up
 ```
 

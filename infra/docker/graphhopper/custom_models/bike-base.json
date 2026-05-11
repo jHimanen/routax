@@ -5,5 +5,6 @@
       "limit_to": "30"
     }
   ],
+  "priority": [{ "if": "road_environment == FERRY", "multiply_by": "0" }],
   "distance_influence": 70
 }

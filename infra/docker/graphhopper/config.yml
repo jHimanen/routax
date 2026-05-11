@@ -6,7 +6,7 @@ graphhopper:
   graph.elevation.cache_dir: /data/elevation-cache
   graph.elevation.dataaccess: MMAP
 
-  graph.encoded_values: average_slope, surface
+  graph.encoded_values: average_slope, surface, road_environment
 
   import.osm.ignored_highways: motorway,trunk
 

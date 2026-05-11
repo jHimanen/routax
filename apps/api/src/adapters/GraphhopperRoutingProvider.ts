@@ -166,6 +166,9 @@ export function buildCustomModel(
   const g = profile.maxGradient;
 
   const priority: unknown[] = [
+    // Hard-exclude ferry edges for all presets. Defence-in-depth: bike-base.json
+    // also carries this rule, but this copy is covered by unit tests on CI.
+    { if: "road_environment == FERRY", multiply_by: "0" },
     {
       if: "road_class == PRIMARY",
       multiply_by: (1 - t * 0.9).toFixed(2),
