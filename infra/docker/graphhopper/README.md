@@ -125,8 +125,16 @@ The exclusion is applied in two places:
 | Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Same rule emitted by `buildCustomModel()` for all four presets |
 
 `road_environment` is part of GraphHopper's automatic encoded-value set and
-is already indexed — no graph rebuild is required. A
-`docker compose restart graphhopper` picks up changes to `bike-base.json`.
+is already indexed. However, **changing `bike-base.json` requires a graph
+rebuild**: GraphHopper fingerprints the content of `custom_model_files` when
+it builds the graph and rejects loading if the hash has changed. Clear the
+cache and reimport:
+
+```bash
+rm -rf infra/docker/graphhopper/data/default-gh
+docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
+# Wait 3–8 min for the Finland import to finish.
+```
 
 A future "Allow ferries" user toggle is explicitly deferred to Phase 4+.
 
@@ -166,8 +174,8 @@ To route a different region (e.g. Sweden):
 
 3. Invalidate the graph cache and rebuild:
    ```bash
-   rm -rf infra/docker/graphhopper/data/graph-cache
-   make up
+   rm -rf infra/docker/graphhopper/data/default-gh
+   docker compose -f infra/docker/docker-compose.local.yml restart graphhopper
    ```
 
 ## Invalidating the graph cache
@@ -175,7 +183,7 @@ To route a different region (e.g. Sweden):
 The cache must be cleared whenever the config or OSM extract changes:
 
 ```bash
-rm -rf infra/docker/graphhopper/data/graph-cache
+rm -rf infra/docker/graphhopper/data/default-gh
 make up
 ```
 
