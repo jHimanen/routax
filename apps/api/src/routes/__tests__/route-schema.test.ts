@@ -2,6 +2,7 @@ import {
   CreateRouteRequestSchema,
   RouteProfilePresetSchema,
   RouteRequestSchema,
+  RoutingProfileSchema,
 } from "@routax/shared";
 import { describe, expect, it } from "vitest";
 
@@ -111,5 +112,42 @@ describe("CreateRouteRequestSchema", () => {
   it("rejects a create request missing preset", () => {
     const { preset: _, ...withoutPreset } = base;
     expect(() => CreateRouteRequestSchema.parse(withoutPreset)).toThrow();
+  });
+});
+
+describe("RoutingProfileSchema — backward compatibility", () => {
+  it("parses a three-field legacy profile and defaults the new five fields", () => {
+    const legacy = { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 };
+    const parsed = RoutingProfileSchema.parse(legacy);
+    expect(parsed.preferCycleNetworks).toBe(0);
+    expect(parsed.preferLargerRoads).toBe(0);
+    expect(parsed.allowFerries).toBe(false);
+    expect(parsed.allowWaterCrossings).toBe(false);
+    expect(parsed.maxTrailDifficulty).toBe(6);
+  });
+
+  it("round-trips a fully-populated eight-field profile unchanged", () => {
+    const full = {
+      avoidTraffic: 0.5,
+      preferQuietSurfaces: 0.3,
+      maxGradient: 10,
+      preferCycleNetworks: 0.8,
+      preferLargerRoads: 0.4,
+      allowFerries: true,
+      allowWaterCrossings: true,
+      maxTrailDifficulty: 3,
+    };
+    expect(RoutingProfileSchema.parse(full)).toEqual(full);
+  });
+
+  it("rejects maxTrailDifficulty outside 0–6", () => {
+    expect(() =>
+      RoutingProfileSchema.parse({
+        avoidTraffic: 0,
+        preferQuietSurfaces: 0,
+        maxGradient: 10,
+        maxTrailDifficulty: 7,
+      }),
+    ).toThrow();
   });
 });

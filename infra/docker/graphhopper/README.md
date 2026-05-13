@@ -159,34 +159,41 @@ make osm-reimport -- --force
 A container restart alone is not sufficient; GH fingerprints the profile
 config and refuses to load if the hash has changed.
 
-## Ferry exclusion
+## Ferry and waterway-crossing exclusion
 
-By default, all routing requests exclude OSM ferry edges (`route=ferry`).
-This is intentional: the Finnish OSM ferry set is noisy (cargo links,
-seasonal ice roads, mis-tagged shipping lanes alongside genuine public
-crossings), and the routing optimiser otherwise treats ferry edges as cheap
-shortcuts across open water.
+By default, routing requests exclude OSM ferry edges (`route=ferry`) and ford crossings
+(`ford=yes`). This is intentional: the Finnish OSM ferry set is noisy (cargo links, seasonal
+ice roads, mis-tagged shipping lanes alongside genuine public crossings), and fords can
+silently route cyclists through streams.
 
-The exclusion is applied in two places:
+The exclusion is applied **per-request only**, in `buildCustomModel()`:
 
 | Layer | File | Mechanism |
 |---|---|---|
-| GraphHopper base profile | `custom_models/bike-base.json` | `priority: road_environment == FERRY → multiply_by 0` |
-| Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Same rule emitted by `buildCustomModel()` for all four presets |
+| Per-request custom model | `apps/api/src/adapters/GraphhopperRoutingProvider.ts` | Ferry rule emitted when `allowFerries: false`; ford rule emitted when `allowWaterCrossings: false` |
 
-A future "Allow ferries" user toggle is explicitly deferred to Phase 4+.
+**`bike-base.json` no longer carries a ferry rule.** The rule was removed in task 24 because
+making ferries user-controllable requires the per-request model to be the sole authority. When
+`allowFerries: true`, the per-request model omits the ferry rule and ferries become routable.
+The per-request rule is the contract; unit tests in `graphhopper.test.ts` cover both states.
 
-## Custom model parameters (v0)
+**Implication:** if the Routax API is offline and someone calls GH directly without a custom
+model, ferry edges are routable. This is an acceptable trade-off for giving users the toggle.
 
-`custom_models/v0-cycling.json` documents the three Routax profile parameters.
-The values below show how the Fastify API (Task 06) maps slider values to
-GraphHopper priority multipliers:
+## Custom model parameters
+
+The Fastify API maps `RoutingProfile` fields to GraphHopper priority multipliers:
 
 | Parameter | Range | Effect |
 |---|---|---|
-| `avoid_traffic` | 0–1 | PRIMARY: `1 - t*0.9`; SECONDARY: `1 - t*0.5` |
-| `prefer_quiet_surfaces` | 0–1 | road_class CYCLEWAY/TRACK/LIVING_STREET/PATH: `1 + q*0.8` |
-| `max_gradient` | 0–15% | Edges steeper than `max_gradient` are penalised to near-zero priority |
+| `avoidTraffic` | 0–1 | PRIMARY: `1 - t*0.9`; SECONDARY: `1 - t*0.5` (else_if) |
+| `preferQuietSurfaces` | 0–1 | road_class CYCLEWAY/TRACK/LIVING_STREET/PATH: `1 + q*0.8` |
+| `maxGradient` | 0–20% | Edges steeper than `maxGradient` are penalised to 0.01 priority |
+| `preferCycleNetworks` | 0–1 | bike_network LOCAL/REGIONAL/NATIONAL/INTERNATIONAL: `1 + c*0.8` |
+| `preferLargerRoads` | 0–1 | road_class SECONDARY/TERTIARY: `1 + l*0.6` (independent `if`) |
+| `allowFerries` | boolean | When false, emits `road_environment == FERRY → 0` |
+| `allowWaterCrossings` | boolean | When false, emits `road_environment == FORD → 0` |
+| `maxTrailDifficulty` | 0–6 | When < 6, emits `mtb_rating > N → 0`; 6 = no cap |
 
 ## Swapping the OSM extract
 

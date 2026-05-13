@@ -5,6 +5,7 @@ import {
   type RoundTripRequest,
   type RouteProfilePreset,
   type RouteResult,
+  type RoutingProfile,
   type RoutingProvider,
   type SurfaceClass,
   type Waypoint,
@@ -157,18 +158,14 @@ const DISTANCE_INFLUENCE: Record<RouteProfilePreset, number> = {
   avoid_gravel: 75,
 };
 
-export function buildCustomModel(
-  profile: { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number },
-  preset: RouteProfilePreset,
-): unknown {
+export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePreset): unknown {
   const t = profile.avoidTraffic;
   const q = profile.preferQuietSurfaces;
   const g = profile.maxGradient;
+  const c = profile.preferCycleNetworks;
+  const l = profile.preferLargerRoads;
 
   const priority: unknown[] = [
-    // Hard-exclude ferry edges for all presets. Defence-in-depth: bike-base.json
-    // also carries this rule, but this copy is covered by unit tests on CI.
-    { if: "road_environment == FERRY", multiply_by: "0" },
     {
       if: "road_class == PRIMARY",
       multiply_by: (1 - t * 0.9).toFixed(2),
@@ -186,6 +183,37 @@ export function buildCustomModel(
       multiply_by: "0.01",
     },
   ];
+
+  // Ferry and ford exclusions: conditional on user-facing toggles.
+  // bike-base.json no longer carries the ferry rule; this per-request rule is the contract.
+  if (!profile.allowFerries) {
+    priority.push({ if: "road_environment == FERRY", multiply_by: "0" });
+  }
+  if (!profile.allowWaterCrossings) {
+    priority.push({ if: "road_environment == FORD", multiply_by: "0" });
+  }
+
+  // Cycle-network preference: boost signed LCN/RCN/NCN/ICN edges.
+  if (c > 0) {
+    priority.push({
+      if: "bike_network == INTERNATIONAL || bike_network == NATIONAL || bike_network == REGIONAL || bike_network == LOCAL",
+      multiply_by: (1 + c * 0.8).toFixed(2),
+    });
+  }
+
+  // Larger-roads preference: fresh `if` block (not else_if) so it fires independently
+  // of the avoidTraffic PRIMARY/SECONDARY chain above. Never boosts PRIMARY/TRUNK/MOTORWAY.
+  if (l > 0) {
+    priority.push({
+      if: "road_class == SECONDARY || road_class == TERTIARY",
+      multiply_by: (1 + l * 0.6).toFixed(2),
+    });
+  }
+
+  // MTB cap: hard exclusion. Default 6 means `mtb_rating > 6` never fires on real OSM data.
+  if (profile.maxTrailDifficulty < 6) {
+    priority.push({ if: `mtb_rating > ${profile.maxTrailDifficulty}`, multiply_by: "0" });
+  }
 
   // Penalise known unpaved surfaces; leave unknown unpenalised (OSM coverage is incomplete).
   if (preset === "avoid_gravel") {
@@ -216,14 +244,19 @@ export function buildCustomModel(
 
 function resolveProfile(request: {
   preset: RouteProfilePreset;
-  advancedOverrides?: { avoidTraffic?: number; preferQuietSurfaces?: number; maxGradient?: number };
-}): { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number } {
+  advancedOverrides?: Partial<RoutingProfile>;
+}): RoutingProfile {
   const defaults = PRESET_DEFAULTS[request.preset];
   const overrides = request.advancedOverrides ?? {};
   return {
     avoidTraffic: overrides.avoidTraffic ?? defaults.avoidTraffic,
     preferQuietSurfaces: overrides.preferQuietSurfaces ?? defaults.preferQuietSurfaces,
     maxGradient: overrides.maxGradient ?? defaults.maxGradient,
+    preferCycleNetworks: overrides.preferCycleNetworks ?? defaults.preferCycleNetworks,
+    preferLargerRoads: overrides.preferLargerRoads ?? defaults.preferLargerRoads,
+    allowFerries: overrides.allowFerries ?? defaults.allowFerries,
+    allowWaterCrossings: overrides.allowWaterCrossings ?? defaults.allowWaterCrossings,
+    maxTrailDifficulty: overrides.maxTrailDifficulty ?? defaults.maxTrailDifficulty,
   };
 }
 
@@ -330,7 +363,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
   private async planLeg(
     from: { lat: number; lng: number },
     to: { lat: number; lng: number },
-    profile: { avoidTraffic: number; preferQuietSurfaces: number; maxGradient: number },
+    profile: RoutingProfile,
     preset: RouteProfilePreset,
   ): Promise<RouteResult> {
     const body = {

@@ -40,7 +40,12 @@ function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
   return (
     a.avoidTraffic === b.avoidTraffic &&
     a.preferQuietSurfaces === b.preferQuietSurfaces &&
-    a.maxGradient === b.maxGradient
+    a.maxGradient === b.maxGradient &&
+    a.preferCycleNetworks === b.preferCycleNetworks &&
+    a.preferLargerRoads === b.preferLargerRoads &&
+    a.allowFerries === b.allowFerries &&
+    a.allowWaterCrossings === b.allowWaterCrossings &&
+    a.maxTrailDifficulty === b.maxTrailDifficulty
   );
 }
 
