@@ -662,10 +662,9 @@ describe("GraphhopperRoutingProvider", () => {
     });
 
     it("omits ferry rule when allowFerries: true", () => {
-      const model = buildCustomModel(
-        { ...baseProfile, allowFerries: true },
-        "fastest_direct",
-      ) as { priority: Array<{ if?: string }> };
+      const model = buildCustomModel({ ...baseProfile, allowFerries: true }, "fastest_direct") as {
+        priority: Array<{ if?: string }>;
+      };
       const ferryRule = model.priority.find((r) => r.if === "road_environment == FERRY");
       expect(ferryRule).toBeUndefined();
     });
