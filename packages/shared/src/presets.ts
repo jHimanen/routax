@@ -1,10 +1,46 @@
 import type { RouteProfilePreset, RoutingProfile } from "./types/route";
 
 export const PRESET_DEFAULTS: Record<RouteProfilePreset, RoutingProfile> = {
-  fastest_direct: { avoidTraffic: 0.0, preferQuietSurfaces: 0.0, maxGradient: 20 },
-  quiet_country_roads: { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 },
-  maximum_climbing: { avoidTraffic: 0.4, preferQuietSurfaces: 0.7, maxGradient: 20 },
-  avoid_gravel: { avoidTraffic: 0.2, preferQuietSurfaces: 0.0, maxGradient: 12 },
+  fastest_direct: {
+    avoidTraffic: 0.0,
+    preferQuietSurfaces: 0.0,
+    maxGradient: 20,
+    preferCycleNetworks: 0.0,
+    preferLargerRoads: 0.7,
+    allowFerries: false,
+    allowWaterCrossings: false,
+    maxTrailDifficulty: 6,
+  },
+  quiet_country_roads: {
+    avoidTraffic: 0.8,
+    preferQuietSurfaces: 0.9,
+    maxGradient: 8,
+    preferCycleNetworks: 0.5,
+    preferLargerRoads: 0.2,
+    allowFerries: false,
+    allowWaterCrossings: false,
+    maxTrailDifficulty: 4,
+  },
+  maximum_climbing: {
+    avoidTraffic: 0.4,
+    preferQuietSurfaces: 0.7,
+    maxGradient: 20,
+    preferCycleNetworks: 0.2,
+    preferLargerRoads: 0.0,
+    allowFerries: false,
+    allowWaterCrossings: false,
+    maxTrailDifficulty: 6,
+  },
+  avoid_gravel: {
+    avoidTraffic: 0.2,
+    preferQuietSurfaces: 0.0,
+    maxGradient: 12,
+    preferCycleNetworks: 0.3,
+    preferLargerRoads: 0.6,
+    allowFerries: false,
+    allowWaterCrossings: false,
+    maxTrailDifficulty: 2,
+  },
 };
 
 export const PRESET_METADATA: Record<RouteProfilePreset, { label: string; description: string }> = {

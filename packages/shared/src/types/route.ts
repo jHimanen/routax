@@ -29,6 +29,12 @@ export const RoutingProfileSchema = z.object({
   avoidTraffic: z.number().min(0).max(1),
   preferQuietSurfaces: z.number().min(0).max(1),
   maxGradient: z.number().min(0).max(20),
+  preferCycleNetworks: z.number().min(0).max(1).default(0),
+  preferLargerRoads: z.number().min(0).max(1).default(0),
+  allowFerries: z.boolean().default(false),
+  allowWaterCrossings: z.boolean().default(false),
+  // 0–6 mirrors OSM mtb:scale; 6 = no cap (rule `mtb_rating > 6` never fires on real data)
+  maxTrailDifficulty: z.number().min(0).max(6).default(6),
 });
 
 export interface RoutingProfile {
@@ -38,6 +44,16 @@ export interface RoutingProfile {
   preferQuietSurfaces: number;
   /** Maximum acceptable gradient in percent (0–20). */
   maxGradient: number;
+  /** 0 = ignore, 1 = strongly prefer signed cycle network edges (LCN/RCN/NCN/ICN). */
+  preferCycleNetworks: number;
+  /** 0 = ignore, 1 = strongly prefer SECONDARY/TERTIARY roads over tracks/paths. */
+  preferLargerRoads: number;
+  /** When true, ferry edges are routable. Default false. */
+  allowFerries: boolean;
+  /** When true, ford crossings are routable. Default false. */
+  allowWaterCrossings: boolean;
+  /** Cap on mtb_rating (0–6). Default 6 = no cap. */
+  maxTrailDifficulty: number;
 }
 
 export const SurfaceClassSchema = z.enum([
