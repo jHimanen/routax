@@ -30,6 +30,8 @@ interface RoutePanelProps {
   isCustom: boolean;
   profile: RoutingProfile;
   onProfileChange: (p: RoutingProfile) => void;
+  /** Called when a slider drag ends or a toggle fires — push one history entry. */
+  onProfileCommit: () => void;
   result: RouteResult | null;
   isLoading: boolean;
   error: string | null;
@@ -116,6 +118,7 @@ export function RoutePanel({
   isCustom,
   profile,
   onProfileChange,
+  onProfileCommit,
   result,
   isLoading,
   error,
@@ -659,6 +662,7 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, preferQuietSurfaces: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
             />
           </label>
           <label className="route-panel-label">
@@ -671,6 +675,7 @@ export function RoutePanel({
               value={profile.maxGradient}
               disabled={deepLinkLoading}
               onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
+              onPointerUp={onProfileCommit}
             />
           </label>
         </div>
@@ -689,6 +694,7 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, avoidTraffic: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
             />
           </label>
           <label className="route-panel-label">
@@ -703,6 +709,7 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, preferLargerRoads: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
             />
           </label>
           <label className="route-panel-label">
@@ -717,6 +724,7 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, preferCycleNetworks: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
             />
           </label>
         </div>
@@ -738,6 +746,7 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, maxTrailDifficulty: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
             />
           </label>
         </div>
@@ -749,7 +758,10 @@ export function RoutePanel({
               type="checkbox"
               checked={profile.allowFerries}
               disabled={deepLinkLoading}
-              onChange={(e) => onProfileChange({ ...profile, allowFerries: e.target.checked })}
+              onChange={(e) => {
+                onProfileChange({ ...profile, allowFerries: e.target.checked });
+                onProfileCommit();
+              }}
             />
             <span>Allow ferries</span>
           </label>
@@ -758,9 +770,10 @@ export function RoutePanel({
               type="checkbox"
               checked={profile.allowWaterCrossings}
               disabled={deepLinkLoading}
-              onChange={(e) =>
-                onProfileChange({ ...profile, allowWaterCrossings: e.target.checked })
-              }
+              onChange={(e) => {
+                onProfileChange({ ...profile, allowWaterCrossings: e.target.checked });
+                onProfileCommit();
+              }}
             />
             <span>Allow waterway crossings</span>
           </label>
