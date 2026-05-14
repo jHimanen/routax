@@ -53,12 +53,16 @@ Rules for as-built content:
 
 Bump the frontmatter `updated` date and, if the task is now fully done, set `status: stable`.
 
-## Step 4 — Update phase index and roadmap if needed
+## Step 4 — Review acceptance criteria
+
+Review the acceptance criteria for the tasks involved and check all boxes that are now complete. If some acceptance criteria are not met, add a note to the task file.
+
+## Step 5 — Update phase index and roadmap if needed
 
 - If a task moved from in-progress to complete, mark it done in the phase index table (`routax-wiki/product/tasks/phaseN.md`).
 - Only touch `routax-wiki/product/roadmap.md` if a phase gate was crossed or something changed that the roadmap is wrong about.
 
-## Step 5 — Append to log.md
+## Step 6 — Append to log.md
 
 Append one entry per significant unit of work (a completed task, a notable decision, a surprise discovery). Format:
 
@@ -70,7 +74,7 @@ As-built notes added to [[product/tasks/phaseN/NN-slug]].
 
 Use op `progress` for implementation work. Use `decision` if the primary output was an architectural or product decision with no code shipped.
 
-## Step 6 — Report back
+## Step 7 — Report back
 
 Print a short summary of every wiki page touched and what changed. One bullet per page.
 
