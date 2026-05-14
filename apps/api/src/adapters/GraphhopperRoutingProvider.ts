@@ -195,10 +195,16 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
 
   // Cycle-network preference: boost signed LCN/RCN/NCN/ICN edges.
   if (c > 0) {
-    priority.push({
-      if: "bike_network == INTERNATIONAL || bike_network == NATIONAL || bike_network == REGIONAL || bike_network == LOCAL",
-      multiply_by: (1 + c * 0.8).toFixed(2),
-    });
+    priority.push(
+      {
+        if: "bike_network == INTERNATIONAL || bike_network == NATIONAL || bike_network == REGIONAL || bike_network == LOCAL",
+        multiply_by: (1 + c * 0.8).toFixed(2),
+      },
+      {
+        if: "bike_network == MISSING",
+        multiply_by: (1 - c * 0.4).toFixed(2),
+      },
+    );
   }
 
   // Larger-roads preference: fresh `if` block (not else_if) so it fires independently
