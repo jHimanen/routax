@@ -31,37 +31,37 @@ export function usePlannerHistory(): UsePlannerHistory {
   const future = useRef<PlannerSnapshot[]>([]);
   // Bumped after every mutation so canUndo/canRedo re-derive from ref lengths.
   const [, setCount] = useState(0);
-  const bump = () => setCount((c) => c + 1);
 
   const push = useCallback((snapshot: PlannerSnapshot) => {
     const entry = structuredClone(snapshot);
     past.current = [...past.current.slice(-(MAX_HISTORY - 1)), entry];
     future.current = [];
-    bump();
+    setCount((c) => c + 1);
   }, []);
 
   const undo = useCallback((): PlannerSnapshot | null => {
     if (past.current.length <= 1) return null;
-    const top = past.current[past.current.length - 1]!;
+    const top = past.current.at(-1);
+    if (top === undefined) return null;
     future.current = [top, ...future.current];
     past.current = past.current.slice(0, -1);
-    bump();
-    return past.current[past.current.length - 1]!;
+    setCount((c) => c + 1);
+    return past.current.at(-1) ?? null;
   }, []);
 
   const redo = useCallback((): PlannerSnapshot | null => {
-    if (future.current.length === 0) return null;
     const [next, ...rest] = future.current;
+    if (next === undefined) return null;
     future.current = rest;
-    past.current = [...past.current, next!];
-    bump();
-    return next!;
+    past.current = [...past.current, next];
+    setCount((c) => c + 1);
+    return next;
   }, []);
 
   const reset = useCallback((snapshot: PlannerSnapshot) => {
     past.current = [structuredClone(snapshot)];
     future.current = [];
-    bump();
+    setCount((c) => c + 1);
   }, []);
 
   return {

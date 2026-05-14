@@ -13,15 +13,18 @@ import {
   type SurfaceClass,
   type Waypoint,
 } from "@routax/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFeatureFlags } from "../hooks/useFeatureFlags";
+import {
+  type DirectionBias,
+  type PlannerMode,
+  type PlannerSnapshot,
+  usePlannerHistory,
+} from "../hooks/usePlannerHistory";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute, getRoute, importGpx, postRoute } from "../lib/api";
 import { SURFACE_PALETTE, buildSurfaceFeatureCollection } from "../lib/surfaces";
 import { RoutePanel, formatDuration } from "./RoutePanel";
-
-type PlannerMode = "point_to_point" | "round_trip";
-type DirectionBias = "any" | "north" | "east" | "south" | "west";
 
 function routeResultFromSaved(saved: SavedRoute): RouteResult {
   return {
@@ -184,6 +187,10 @@ interface RoutaxMapProps {
   /** When set, the map flies to this coordinate (cue centering). */
   cueCoord: [number, number] | null;
   panelOpen: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 function RoutaxMap({
@@ -199,6 +206,10 @@ function RoutaxMap({
   surfaceMapViz,
   cueCoord,
   panelOpen,
+  onUndo: _onUndo,
+  onRedo: _onRedo,
+  canUndo: _canUndo,
+  canRedo: _canRedo,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -522,6 +533,77 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     resultOverride,
   });
 
+  // ── Undo / redo ──────────────────────────────────────────────────────────────
+
+  const {
+    push: historyPush,
+    undo: historyUndo,
+    redo: historyRedo,
+    reset: historyReset,
+    canUndo,
+    canRedo,
+  } = usePlannerHistory();
+
+  // Mirror all snapshot fields into a ref so commit() always reads fresh state
+  // even when called from a debounced / event-based context (e.g. onPointerUp).
+  const snapshotRef = useRef<PlannerSnapshot>({
+    waypoints: [],
+    preset: DEFAULT_PRESET,
+    profile: PRESET_DEFAULTS[DEFAULT_PRESET],
+    plannerMode: "point_to_point",
+    targetDistanceKm: 50,
+    directionBias: "any",
+    roundTripSeed: 0,
+    resultOverride: null,
+  });
+  useLayoutEffect(() => {
+    snapshotRef.current = {
+      waypoints,
+      preset,
+      profile,
+      plannerMode,
+      targetDistanceKm,
+      directionBias,
+      roundTripSeed,
+      resultOverride,
+    };
+  });
+
+  const buildSnapshot = useCallback(
+    (overrides: Partial<PlannerSnapshot> = {}): PlannerSnapshot => ({
+      ...snapshotRef.current,
+      ...overrides,
+    }),
+    [],
+  );
+
+  // commit() reads the latest snapshot from snapshotRef. Use this from onPointerUp /
+  // other event-based triggers that fire after React has already re-rendered.
+  const commit = useCallback(() => {
+    historyPush(snapshotRef.current);
+  }, [historyPush]);
+
+  const applySnapshot = useCallback((s: PlannerSnapshot) => {
+    setWaypoints(s.waypoints);
+    setPreset(s.preset);
+    setProfile(s.profile);
+    setPlannerMode(s.plannerMode);
+    setTargetDistanceKm(s.targetDistanceKm);
+    setDirectionBias(s.directionBias);
+    setRoundTripSeed(s.roundTripSeed);
+    setResultOverride(s.resultOverride);
+  }, []);
+
+  const doUndo = useCallback(() => {
+    const s = historyUndo();
+    if (s) applySnapshot(s);
+  }, [historyUndo, applySnapshot]);
+
+  const doRedo = useCallback(() => {
+    const s = historyRedo();
+    if (s) applySnapshot(s);
+  }, [historyRedo, applySnapshot]);
+
   const mobileStatusText = (() => {
     if (repositionTarget !== null)
       return `Tap map to move ${repositionTarget === "start" ? "Start" : "Finish"}`;
@@ -533,35 +615,53 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     return "Tap map to place start";
   })();
 
-  const applySavedRoute = useCallback((saved: SavedRoute) => {
-    let restoredWaypoints: Waypoint[];
+  const applySavedRoute = useCallback(
+    (saved: SavedRoute) => {
+      let restoredWaypoints: Waypoint[];
 
-    if (saved.waypoints && saved.waypoints.length >= 2) {
-      restoredWaypoints = saved.waypoints;
-    } else {
-      // Legacy route: derive start/finish from geometry
-      const coords = saved.geometry.coordinates;
-      if (coords.length < 2) return;
-      const a = coords[0] as [number, number];
-      const b = coords[coords.length - 1] as [number, number];
-      restoredWaypoints = [
-        { id: makeWaypointId(), position: { lat: a[1], lng: a[0] }, role: "start" },
-        { id: makeWaypointId(), position: { lat: b[1], lng: b[0] }, role: "finish" },
-      ];
-    }
+      if (saved.waypoints && saved.waypoints.length >= 2) {
+        restoredWaypoints = saved.waypoints;
+      } else {
+        // Legacy route: derive start/finish from geometry
+        const coords = saved.geometry.coordinates;
+        if (coords.length < 2) return;
+        const a = coords[0] as [number, number];
+        const b = coords[coords.length - 1] as [number, number];
+        restoredWaypoints = [
+          { id: makeWaypointId(), position: { lat: a[1], lng: a[0] }, role: "start" },
+          { id: makeWaypointId(), position: { lat: b[1], lng: b[0] }, role: "finish" },
+        ];
+      }
 
-    setWaypoints(restoredWaypoints);
-    setPreset(saved.preset);
-    setProfile({ ...saved.profile });
-    setResultOverride(routeResultFromSaved(saved));
-    setLoadBaseline({
-      waypoints: restoredWaypoints,
-      preset: saved.preset,
-      profile: { ...saved.profile },
-    });
-    setRouteModified(false);
-    setPlanningMetadata(saved.planningMetadata ?? null);
-  }, []);
+      const savedProfile = { ...saved.profile };
+      const savedResult = routeResultFromSaved(saved);
+
+      setWaypoints(restoredWaypoints);
+      setPreset(saved.preset);
+      setProfile(savedProfile);
+      setResultOverride(savedResult);
+      setLoadBaseline({
+        waypoints: restoredWaypoints,
+        preset: saved.preset,
+        profile: savedProfile,
+      });
+      setRouteModified(false);
+      setPlanningMetadata(saved.planningMetadata ?? null);
+
+      // Load is a navigation event — reset history so the loaded state is the baseline.
+      historyReset({
+        waypoints: restoredWaypoints,
+        preset: saved.preset,
+        profile: savedProfile,
+        plannerMode: snapshotRef.current.plannerMode,
+        targetDistanceKm: snapshotRef.current.targetDistanceKm,
+        directionBias: snapshotRef.current.directionBias,
+        roundTripSeed: snapshotRef.current.roundTripSeed,
+        resultOverride: savedResult,
+      });
+    },
+    [historyReset],
+  );
 
   useEffect(() => {
     if (!initialRouteId || initialRouteId.trim() === "") return;
@@ -588,22 +688,25 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     };
   }, [initialRouteId, isReady, savedFlagOn, applySavedRoute]);
 
-  // Modification detection when a saved route is loaded
+  // Recompute routeModified whenever planner state or baseline changes.
+  // Also clears the cached route geometry when state diverges from the baseline
+  // so the live pipeline re-runs. Handles the undo-back-to-baseline case correctly.
   useEffect(() => {
-    if (!resultOverride || !loadBaseline) return;
-    if (waypoints.length === 0) return;
-    if (
-      waypointsEqual(waypoints, loadBaseline.waypoints) &&
-      preset === loadBaseline.preset &&
-      profileEqual(profile, loadBaseline.profile)
-    ) {
-      return;
+    if (!loadBaseline) return;
+    const diverges =
+      !waypointsEqual(waypoints, loadBaseline.waypoints) ||
+      preset !== loadBaseline.preset ||
+      !profileEqual(profile, loadBaseline.profile);
+    if (diverges) {
+      setResultOverride(null);
+      setRouteModified(true);
+      setPlanningMetadata(null);
+    } else {
+      setRouteModified(false);
     }
-    setResultOverride(null);
-    setLoadBaseline(null);
-    setRouteModified(true);
-    setPlanningMetadata(null);
-  }, [waypoints, preset, profile, resultOverride, loadBaseline]);
+    // resultOverride intentionally excluded — it's a write target of this effect, not a trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waypoints, preset, profile, loadBaseline]);
 
   const handleSave = useCallback(
     async (name: string) => {
@@ -632,37 +735,51 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setCueCoord([lng, lat]);
   }, []);
 
-  const handleGpxImport = useCallback(async (file: File) => {
-    setImportStatus({ phase: "importing", message: "Importing…" });
-    try {
-      const text = await file.text();
-      const res = await importGpx(text, file.name);
-      setResultOverride(null);
-      setLoadBaseline(null);
-      setRouteModified(false);
-      setPlannerMode("point_to_point");
-      setRoundTripSeed(0);
-      setPlanningMetadata({
-        mode: "gpx_import",
-        sourceFilename: res.filename,
-        importedAt: res.importedAt,
-      });
-      setWaypoints(res.waypoints);
-      setImportStatus(
-        res.simplified
-          ? {
-              phase: "simplified",
-              message: `Simplified from ${res.pointCount.toLocaleString()} points to ${res.waypoints.length} waypoints.`,
-            }
-          : null,
-      );
-    } catch (e) {
-      setImportStatus({
-        phase: "error",
-        message: e instanceof Error ? e.message : "Import failed",
-      });
-    }
-  }, []);
+  const handleGpxImport = useCallback(
+    async (file: File) => {
+      setImportStatus({ phase: "importing", message: "Importing…" });
+      try {
+        const text = await file.text();
+        const res = await importGpx(text, file.name);
+        setResultOverride(null);
+        setLoadBaseline(null);
+        setRouteModified(false);
+        setPlannerMode("point_to_point");
+        setRoundTripSeed(0);
+        setPlanningMetadata({
+          mode: "gpx_import",
+          sourceFilename: res.filename,
+          importedAt: res.importedAt,
+        });
+        setWaypoints(res.waypoints);
+        setImportStatus(
+          res.simplified
+            ? {
+                phase: "simplified",
+                message: `Simplified from ${res.pointCount.toLocaleString()} points to ${res.waypoints.length} waypoints.`,
+              }
+            : null,
+        );
+        // GPX import is a navigation event — reset history so the imported state is the baseline.
+        historyReset({
+          waypoints: res.waypoints,
+          preset: snapshotRef.current.preset,
+          profile: snapshotRef.current.profile,
+          plannerMode: "point_to_point",
+          targetDistanceKm: snapshotRef.current.targetDistanceKm,
+          directionBias: snapshotRef.current.directionBias,
+          roundTripSeed: 0,
+          resultOverride: null,
+        });
+      } catch (e) {
+        setImportStatus({
+          phase: "error",
+          message: e instanceof Error ? e.message : "Import failed",
+        });
+      }
+    },
+    [historyReset],
+  );
 
   const handleReset = useCallback(() => {
     setWaypoints([]);
@@ -671,7 +788,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setRouteModified(false);
     setPlanningMetadata(null);
     setRoundTripSeed(0);
-  }, []);
+    // Reset is undoable — push the cleared state so the user can undo it.
+    historyPush(buildSnapshot({ waypoints: [], resultOverride: null, roundTripSeed: 0 }));
+  }, [historyPush, buildSnapshot]);
 
   const handleStartReposition = useCallback(
     (role: "start" | "finish") => {
@@ -693,10 +812,12 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       // Reposition banner flow: next click moves the target endpoint without opening the menu
       if (repositionTarget !== null) {
-        setWaypoints((prev) =>
-          prev.map((w) => (w.role === repositionTarget ? { ...w, position: lngLat } : w)),
+        const newWps = waypoints.map((w) =>
+          w.role === repositionTarget ? { ...w, position: lngLat } : w,
         );
+        setWaypoints(newWps);
         setRepositionTarget(null);
+        historyPush(buildSnapshot({ waypoints: newWps }));
         return;
       }
 
@@ -704,7 +825,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       // Round-trip mode: any click places or replaces the single start point — no menu
       if (plannerMode === "round_trip") {
-        setWaypoints([{ id: makeWaypointId(), position: lngLat, role: "start" }]);
+        const newWps: Waypoint[] = [{ id: makeWaypointId(), position: lngLat, role: "start" }];
+        setWaypoints(newWps);
+        historyPush(buildSnapshot({ waypoints: newWps }));
         return;
       }
 
@@ -718,74 +841,97 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       }
 
       // Cold-start: place start (first click) or finish (second click)
-      setWaypoints((prev) => {
-        if (prev.length === 0) {
-          return [{ id: makeWaypointId(), position: lngLat, role: "start" }];
-        }
-        if (prev.length === 1) {
-          return [...prev, { id: makeWaypointId(), position: lngLat, role: "finish" }];
-        }
-        return prev;
-      });
+      let newWps: Waypoint[] | null = null;
+      if (waypoints.length === 0) {
+        newWps = [{ id: makeWaypointId(), position: lngLat, role: "start" }];
+      } else if (waypoints.length === 1) {
+        newWps = [...waypoints, { id: makeWaypointId(), position: lngLat, role: "finish" }];
+      }
+      if (newWps) {
+        setWaypoints(newWps);
+        historyPush(buildSnapshot({ waypoints: newWps }));
+      }
     },
-    [initialRouteId, deepLinkResolved, plannerMode, repositionTarget, waypoints],
+    [
+      initialRouteId,
+      deepLinkResolved,
+      plannerMode,
+      repositionTarget,
+      waypoints,
+      historyPush,
+      buildSnapshot,
+    ],
   );
 
   const handleAddVia = useCallback(() => {
-    setWaypoints((prev) => {
-      if (prev.length < 2) return prev;
-      const last = prev.at(-1);
-      const secondLast = prev.at(-2);
-      if (!last || !secondLast) return prev;
-      const newVia: Waypoint = {
-        id: makeWaypointId(),
-        position: {
-          lat: (last.position.lat + secondLast.position.lat) / 2,
-          lng: (last.position.lng + secondLast.position.lng) / 2,
-        },
-        role: "via",
-      };
-      return [...prev.slice(0, -1), newVia, last];
-    });
-  }, []);
+    if (waypoints.length < 2) return;
+    const last = waypoints.at(-1);
+    const secondLast = waypoints.at(-2);
+    if (!last || !secondLast) return;
+    const newVia: Waypoint = {
+      id: makeWaypointId(),
+      position: {
+        lat: (last.position.lat + secondLast.position.lat) / 2,
+        lng: (last.position.lng + secondLast.position.lng) / 2,
+      },
+      role: "via",
+    };
+    const newWps = [...waypoints.slice(0, -1), newVia, last];
+    setWaypoints(newWps);
+    historyPush(buildSnapshot({ waypoints: newWps }));
+  }, [waypoints, historyPush, buildSnapshot]);
 
-  const handleRemoveVia = useCallback((id: string) => {
-    setWaypoints((prev) => prev.filter((w) => w.id !== id));
-  }, []);
+  const handleRemoveVia = useCallback(
+    (id: string) => {
+      const newWps = waypoints.filter((w) => w.id !== id);
+      setWaypoints(newWps);
+      historyPush(buildSnapshot({ waypoints: newWps }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
-  const handleMoveViaUp = useCallback((id: string) => {
-    setWaypoints((prev) => {
-      const idx = prev.findIndex((w) => w.id === id);
-      if (idx <= 1) return prev; // can't move above start
-      const next = [...prev];
+  const handleMoveViaUp = useCallback(
+    (id: string) => {
+      const idx = waypoints.findIndex((w) => w.id === id);
+      if (idx <= 1) return;
+      const next = [...waypoints];
       const a = next[idx];
       const b = next[idx - 1];
       if (a !== undefined && b !== undefined) {
         next[idx - 1] = a;
         next[idx] = b;
       }
-      return next;
-    });
-  }, []);
+      setWaypoints(next);
+      historyPush(buildSnapshot({ waypoints: next }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
-  const handleMoveViaDown = useCallback((id: string) => {
-    setWaypoints((prev) => {
-      const idx = prev.findIndex((w) => w.id === id);
-      if (idx < 0 || idx >= prev.length - 2) return prev; // can't move below finish
-      const next = [...prev];
+  const handleMoveViaDown = useCallback(
+    (id: string) => {
+      const idx = waypoints.findIndex((w) => w.id === id);
+      if (idx < 0 || idx >= waypoints.length - 2) return;
+      const next = [...waypoints];
       const a = next[idx];
       const b = next[idx + 1];
       if (a !== undefined && b !== undefined) {
         next[idx] = b;
         next[idx + 1] = a;
       }
-      return next;
-    });
-  }, []);
+      setWaypoints(next);
+      historyPush(buildSnapshot({ waypoints: next }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
-  const handleWaypointMoved = useCallback((id: string, pos: LatLng) => {
-    setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, position: pos } : w)));
-  }, []);
+  const handleWaypointMoved = useCallback(
+    (id: string, pos: LatLng) => {
+      const newWps = waypoints.map((w) => (w.id === id ? { ...w, position: pos } : w));
+      setWaypoints(newWps);
+      historyPush(buildSnapshot({ waypoints: newWps }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
   const handleGenerateRoundTrip = useCallback(
     async (regenerate: boolean) => {
@@ -819,34 +965,65 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           targetDistanceKm,
           directionBias: directionBias !== "any" ? directionBias : undefined,
         });
+        historyPush({
+          waypoints: gw,
+          preset,
+          profile,
+          plannerMode,
+          targetDistanceKm,
+          directionBias,
+          roundTripSeed: nextSeed,
+          resultOverride: res,
+        });
       } finally {
         setIsGenerating(false);
       }
     },
-    [waypoints, roundTripSeed, targetDistanceKm, directionBias, preset, profile],
+    [
+      waypoints,
+      roundTripSeed,
+      targetDistanceKm,
+      directionBias,
+      preset,
+      profile,
+      plannerMode,
+      historyPush,
+    ],
   );
 
-  const handleMenuAddWaypoint = useCallback((lngLat: LatLng) => {
-    setClickMenu(null);
-    setWaypoints((prev) => {
-      if (prev.length < 2) return prev;
-      const insertAt = findInsertIndex(lngLat, prev);
+  const handleMenuAddWaypoint = useCallback(
+    (lngLat: LatLng) => {
+      setClickMenu(null);
+      if (waypoints.length < 2) return;
+      const insertAt = findInsertIndex(lngLat, waypoints);
       const newVia: Waypoint = { id: makeWaypointId(), position: lngLat, role: "via" };
-      const next = [...prev];
-      next.splice(insertAt, 0, newVia);
-      return next;
-    });
-  }, []);
+      const newWps = [...waypoints];
+      newWps.splice(insertAt, 0, newVia);
+      setWaypoints(newWps);
+      historyPush(buildSnapshot({ waypoints: newWps }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
-  const handleMenuMoveStart = useCallback((lngLat: LatLng) => {
-    setClickMenu(null);
-    setWaypoints((prev) => prev.map((w) => (w.role === "start" ? { ...w, position: lngLat } : w)));
-  }, []);
+  const handleMenuMoveStart = useCallback(
+    (lngLat: LatLng) => {
+      setClickMenu(null);
+      const newWps = waypoints.map((w) => (w.role === "start" ? { ...w, position: lngLat } : w));
+      setWaypoints(newWps);
+      historyPush(buildSnapshot({ waypoints: newWps }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
-  const handleMenuMoveFinish = useCallback((lngLat: LatLng) => {
-    setClickMenu(null);
-    setWaypoints((prev) => prev.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w)));
-  }, []);
+  const handleMenuMoveFinish = useCallback(
+    (lngLat: LatLng) => {
+      setClickMenu(null);
+      const newWps = waypoints.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w));
+      setWaypoints(newWps);
+      historyPush(buildSnapshot({ waypoints: newWps }));
+    },
+    [waypoints, historyPush, buildSnapshot],
+  );
 
   // Close click menu on outside-click or Escape
   useEffect(() => {
@@ -889,6 +1066,44 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     return () => document.removeEventListener("keydown", onKey);
   }, [clickMenu]);
 
+  // Establish the initial history baseline once on mount.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot effect
+  useEffect(() => {
+    historyReset(snapshotRef.current);
+  }, []);
+
+  // Global keyboard shortcuts: Cmd/Ctrl+Z (undo), Cmd/Ctrl+Shift+Z and Ctrl+Y (redo).
+  // Suppressed when focus is on a text input or textarea — those use native undo.
+  useEffect(() => {
+    function isEditableTarget(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement)) return false;
+      return (
+        (target.tagName === "INPUT" &&
+          target.getAttribute("type") !== "range" &&
+          target.getAttribute("type") !== "checkbox") ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      );
+    }
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (isEditableTarget(e.target)) return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) {
+        e.preventDefault();
+        doUndo();
+        return;
+      }
+      if ((k === "z" && e.shiftKey) || k === "y") {
+        e.preventDefault();
+        doRedo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [doUndo, doRedo]);
+
   const cursorMode =
     repositionTarget !== null
       ? "crosshair"
@@ -913,17 +1128,24 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         surfaceMapViz={surfaceMapViz}
         cueCoord={cueCoord}
         panelOpen={panelOpen}
+        onUndo={doUndo}
+        onRedo={doRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <RoutePanel
         waypoints={waypoints}
         preset={preset}
         onPresetChange={(p) => {
+          const newProfile = PRESET_DEFAULTS[p];
           setPreset(p);
-          setProfile(PRESET_DEFAULTS[p]);
+          setProfile(newProfile);
+          historyPush(buildSnapshot({ preset: p, profile: newProfile }));
         }}
         isCustom={profile !== PRESET_DEFAULTS[preset]}
         profile={profile}
         onProfileChange={setProfile}
+        onProfileCommit={commit}
         result={result}
         isLoading={isLoading}
         error={error}
@@ -950,12 +1172,31 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         plannerMode={plannerMode}
         onPlannerModeChange={(m) => {
           setPlannerMode(m);
-          handleReset();
+          setWaypoints([]);
+          setResultOverride(null);
+          setLoadBaseline(null);
+          setRouteModified(false);
+          setPlanningMetadata(null);
+          setRoundTripSeed(0);
+          historyPush(
+            buildSnapshot({
+              plannerMode: m,
+              waypoints: [],
+              resultOverride: null,
+              roundTripSeed: 0,
+            }),
+          );
         }}
         targetDistanceKm={targetDistanceKm}
-        onTargetDistanceChange={setTargetDistanceKm}
+        onTargetDistanceChange={(v) => {
+          setTargetDistanceKm(v);
+          historyPush(buildSnapshot({ targetDistanceKm: v }));
+        }}
         directionBias={directionBias}
-        onDirectionBiasChange={setDirectionBias}
+        onDirectionBiasChange={(v) => {
+          setDirectionBias(v);
+          historyPush(buildSnapshot({ directionBias: v }));
+        }}
         onGenerate={() => void handleGenerateRoundTrip(false)}
         onRegenerate={() => void handleGenerateRoundTrip(true)}
         isGenerating={isGenerating}
