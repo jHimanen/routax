@@ -1575,3 +1575,35 @@ body {
 .fit-route-ctrl-btn:hover {
   background: var(--color-bg);
 }
+
+/* Undo / redo control buttons — top-left map rail */
+.history-ctrl-group {
+  display: flex;
+  flex-direction: row;
+}
+
+.history-ctrl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Match MapLibre NavigationControl sizing */
+  width: 29px;
+  height: 29px;
+  /* Minimum touch target (task 15) */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+
+.history-ctrl-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.history-ctrl-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

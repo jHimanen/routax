@@ -171,6 +171,72 @@ class FitRouteControl implements maplibregl.IControl {
   }
 }
 
+// Undo / redo buttons — top-left map control rail, always visible.
+// Callbacks and enable-states are supplied via refs so the control never
+// needs to be re-added when state changes.
+class HistoryControl implements maplibregl.IControl {
+  private container: HTMLElement | null = null;
+  private undoBtn: HTMLButtonElement | null = null;
+  private redoBtn: HTMLButtonElement | null = null;
+  private onUndo: () => void;
+  private onRedo: () => void;
+
+  // Lucide undo-2 / redo-2 paths
+  private static UNDO_SVG =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
+  private static REDO_SVG =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>`;
+
+  constructor(opts: { onUndo: () => void; onRedo: () => void }) {
+    this.onUndo = opts.onUndo;
+    this.onRedo = opts.onRedo;
+  }
+
+  onAdd(): HTMLElement {
+    const isMac =
+      typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
+    const undoShortcut = isMac ? "⌘Z" : "Ctrl+Z";
+    const redoShortcut = isMac ? "⌘⇧Z" : "Ctrl+Y";
+
+    this.container = document.createElement("div");
+    this.container.className = "maplibregl-ctrl maplibregl-ctrl-group history-ctrl-group";
+
+    this.undoBtn = document.createElement("button");
+    this.undoBtn.type = "button";
+    this.undoBtn.className = "maplibregl-ctrl-icon history-ctrl-btn";
+    this.undoBtn.setAttribute("aria-label", `Undo (${undoShortcut})`);
+    this.undoBtn.title = `Undo (${undoShortcut})`;
+    this.undoBtn.innerHTML = HistoryControl.UNDO_SVG;
+    this.undoBtn.disabled = true;
+    this.undoBtn.addEventListener("click", () => this.onUndo());
+
+    this.redoBtn = document.createElement("button");
+    this.redoBtn.type = "button";
+    this.redoBtn.className = "maplibregl-ctrl-icon history-ctrl-btn";
+    this.redoBtn.setAttribute("aria-label", `Redo (${redoShortcut})`);
+    this.redoBtn.title = `Redo (${redoShortcut})`;
+    this.redoBtn.innerHTML = HistoryControl.REDO_SVG;
+    this.redoBtn.disabled = true;
+    this.redoBtn.addEventListener("click", () => this.onRedo());
+
+    this.container.appendChild(this.undoBtn);
+    this.container.appendChild(this.redoBtn);
+    return this.container;
+  }
+
+  onRemove(): void {
+    this.container?.remove();
+    this.container = null;
+    this.undoBtn = null;
+    this.redoBtn = null;
+  }
+
+  updateState(canUndo: boolean, canRedo: boolean): void {
+    if (this.undoBtn) this.undoBtn.disabled = !canUndo;
+    if (this.redoBtn) this.redoBtn.disabled = !canRedo;
+  }
+}
+
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
 
 interface RoutaxMapProps {
@@ -206,10 +272,10 @@ function RoutaxMap({
   surfaceMapViz,
   cueCoord,
   panelOpen,
-  onUndo: _onUndo,
-  onRedo: _onRedo,
-  canUndo: _canUndo,
-  canRedo: _canRedo,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -243,6 +309,17 @@ function RoutaxMap({
   }, [panelOpen]);
 
   const fitControlRef = useRef<FitRouteControl | null>(null);
+  const historyControlRef = useRef<HistoryControl | null>(null);
+
+  // Stable refs for onUndo/onRedo so the HistoryControl always calls the latest.
+  const onUndoRef = useRef(onUndo);
+  const onRedoRef = useRef(onRedo);
+  useEffect(() => {
+    onUndoRef.current = onUndo;
+  });
+  useEffect(() => {
+    onRedoRef.current = onRedo;
+  });
 
   // Map lifecycle
   useEffect(() => {
@@ -259,6 +336,13 @@ function RoutaxMap({
     map.addControl(new maplibregl.AttributionControl({ compact: false }));
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    const histCtrl = new HistoryControl({
+      onUndo: () => onUndoRef.current(),
+      onRedo: () => onRedoRef.current(),
+    });
+    map.addControl(histCtrl, "top-left");
+    historyControlRef.current = histCtrl;
+
     map.on("load", () => {
       onMapLoadedRef.current();
     });
@@ -273,11 +357,17 @@ function RoutaxMap({
     mapRef.current = map;
 
     return () => {
+      historyControlRef.current = null;
       map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [styleUrl]);
+
+  // Keep HistoryControl button states in sync with canUndo/canRedo.
+  useEffect(() => {
+    historyControlRef.current?.updateState(canUndo, canRedo);
+  }, [canUndo, canRedo]);
 
   // Cursor feedback
   useEffect(() => {
