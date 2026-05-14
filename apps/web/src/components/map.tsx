@@ -1112,8 +1112,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           ? "crosshair"
           : "grab";
 
-  const isMac =
-    typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(navigator.platform.toLowerCase().includes("mac"));
+  }, []);
   const undoShortcut = isMac ? "⌘Z" : "Ctrl+Z";
   const redoShortcut = isMac ? "⌘⇧Z" : "Ctrl+Y";
 
