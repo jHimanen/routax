@@ -139,12 +139,11 @@ const SURFACE_PAINT_EXPRESSION = [
 interface RoutaxMapProps {
   waypoints: Waypoint[];
   routeGeoJSON: RouteResult["geometry"] | null;
-  onMapClick: (lngLat: LatLng) => void;
+  onMapClick: (lngLat: LatLng, screenPos: { x: number; y: number }) => void;
   onMapLoaded: () => void;
   mapLoaded: boolean;
   hoverCoord: [number, number] | null;
   onWaypointMoved: (id: string, pos: LatLng) => void;
-  onClickRoute: (lngLat: LatLng) => void;
   cursorMode: "crosshair" | "grab";
   surfaces: SurfaceClass[];
   surfaceMapViz: boolean;
@@ -161,7 +160,6 @@ function RoutaxMap({
   mapLoaded,
   hoverCoord,
   onWaypointMoved,
-  onClickRoute,
   cursorMode,
   surfaces,
   surfaceMapViz,
@@ -190,11 +188,6 @@ function RoutaxMap({
     onWaypointMovedRef.current = onWaypointMoved;
   });
 
-  const onClickRouteRef = useRef(onClickRoute);
-  useEffect(() => {
-    onClickRouteRef.current = onClickRoute;
-  });
-
   // Map lifecycle
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !styleUrl) return;
@@ -215,7 +208,10 @@ function RoutaxMap({
     });
 
     map.on("click", (e) => {
-      onMapClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      onMapClickRef.current(
+        { lat: e.lngLat.lat, lng: e.lngLat.lng },
+        { x: e.point.x, y: e.point.y },
+      );
     });
 
     mapRef.current = map;
@@ -309,23 +305,13 @@ function RoutaxMap({
           },
         });
 
-        // Click on route line to insert via waypoint
-        map.on("click", LAYER_ID, (e) => {
-          e.preventDefault();
-          onClickRouteRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-        });
-
-        // Widen hit area for easier clicking
+        // Widen hit area so hover cursor feedback works near the line
         map.addLayer({
           id: `${LAYER_ID}-hit`,
           type: "line",
           source: SOURCE_ID,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: { "line-color": "transparent", "line-width": 12 },
-        });
-        map.on("click", `${LAYER_ID}-hit`, (e) => {
-          e.preventDefault();
-          onClickRouteRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
         });
       }
 
@@ -450,6 +436,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const [cueCoord, setCueCoord] = useState<[number, number] | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [repositionTarget, setRepositionTarget] = useState<"start" | "finish" | null>(null);
+  const [clickMenu, setClickMenu] = useState<{
+    lngLat: LatLng;
+    screenX: number;
+    screenY: number;
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement | null>(null);
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
@@ -617,7 +610,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const handleCancelReposition = useCallback(() => setRepositionTarget(null), []);
 
   const handleMapClick = useCallback(
-    (lngLat: LatLng) => {
+    (lngLat: LatLng, screenPos: { x: number; y: number }) => {
+      // Reposition banner flow: next click moves the target endpoint without opening the menu
       if (repositionTarget !== null) {
         setWaypoints((prev) =>
           prev.map((w) => (w.role === repositionTarget ? { ...w, position: lngLat } : w)),
@@ -628,12 +622,22 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       if (initialRouteId && !deepLinkResolved) return;
 
+      // Round-trip mode: any click places or replaces the single start point — no menu
       if (plannerMode === "round_trip") {
-        // Any click places or replaces the single start point
         setWaypoints([{ id: makeWaypointId(), position: lngLat, role: "start" }]);
         return;
       }
 
+      const hasStart = waypoints.some((w) => w.role === "start");
+      const hasFinish = waypoints.some((w) => w.role === "finish");
+
+      if (hasStart && hasFinish) {
+        // Both endpoints present — open explicit context menu instead of implicitly inserting
+        setClickMenu({ lngLat, screenX: screenPos.x, screenY: screenPos.y });
+        return;
+      }
+
+      // Cold-start: place start (first click) or finish (second click)
       setWaypoints((prev) => {
         if (prev.length === 0) {
           return [{ id: makeWaypointId(), position: lngLat, role: "start" }];
@@ -641,11 +645,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         if (prev.length === 1) {
           return [...prev, { id: makeWaypointId(), position: lngLat, role: "finish" }];
         }
-        // Already have start+finish — ignore plain map clicks; use panel controls or route click
         return prev;
       });
     },
-    [initialRouteId, deepLinkResolved, plannerMode, repositionTarget],
+    [initialRouteId, deepLinkResolved, plannerMode, repositionTarget, waypoints],
   );
 
   const handleAddVia = useCallback(() => {
@@ -743,7 +746,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     [waypoints, roundTripSeed, targetDistanceKm, directionBias, preset, profile],
   );
 
-  const handleClickRoute = useCallback((lngLat: LatLng) => {
+  const handleMenuAddWaypoint = useCallback((lngLat: LatLng) => {
+    setClickMenu(null);
     setWaypoints((prev) => {
       if (prev.length < 2) return prev;
       const insertAt = findInsertIndex(lngLat, prev);
@@ -754,14 +758,66 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     });
   }, []);
 
-  // Escape clears all waypoints
+  const handleMenuMoveStart = useCallback((lngLat: LatLng) => {
+    setClickMenu(null);
+    setWaypoints((prev) => prev.map((w) => (w.role === "start" ? { ...w, position: lngLat } : w)));
+  }, []);
+
+  const handleMenuMoveFinish = useCallback((lngLat: LatLng) => {
+    setClickMenu(null);
+    setWaypoints((prev) =>
+      prev.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w)),
+    );
+  }, []);
+
+  // Escape clears all waypoints (when menu is not open)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleReset();
+      if (e.key === "Escape" && !clickMenu) handleReset();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleReset]);
+  }, [handleReset, clickMenu]);
+
+  // Close click menu on outside-click or Escape
+  useEffect(() => {
+    if (!clickMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setClickMenu(null);
+    };
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setClickMenu(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [clickMenu]);
+
+  // Focus first menu item when menu opens; arrow-key navigation within menu
+  useEffect(() => {
+    if (!clickMenu || !menuRef.current) return;
+    firstMenuItemRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      const items = Array.from(
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+      );
+      const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        items[(idx + 1) % items.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        items[(idx - 1 + items.length) % items.length]?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [clickMenu]);
 
   const cursorMode =
     repositionTarget !== null
@@ -782,7 +838,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         mapLoaded={mapLoaded}
         hoverCoord={hoverCoord}
         onWaypointMoved={handleWaypointMoved}
-        onClickRoute={handleClickRoute}
         cursorMode={cursorMode}
         surfaces={result?.surfaces ?? []}
         surfaceMapViz={surfaceMapViz}
@@ -858,6 +913,45 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       {!panelOpen && (
         <div className="route-panel-status-chip" aria-live="polite">
           {mobileStatusText}
+        </div>
+      )}
+      {clickMenu && (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Map actions"
+          className="map-click-menu"
+          style={{
+            position: "fixed",
+            left: Math.min(clickMenu.screenX, window.innerWidth - 168),
+            top: Math.min(clickMenu.screenY, window.innerHeight - 148),
+          }}
+        >
+          <button
+            ref={firstMenuItemRef}
+            type="button"
+            role="menuitem"
+            className="map-click-menu-item"
+            onClick={() => handleMenuAddWaypoint(clickMenu.lngLat)}
+          >
+            Add waypoint
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="map-click-menu-item"
+            onClick={() => handleMenuMoveStart(clickMenu.lngLat)}
+          >
+            Move start here
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="map-click-menu-item"
+            onClick={() => handleMenuMoveFinish(clickMenu.lngLat)}
+          >
+            Move finish here
+          </button>
         </div>
       )}
     </div>
