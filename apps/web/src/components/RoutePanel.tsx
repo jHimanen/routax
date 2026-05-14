@@ -324,7 +324,7 @@ export function RoutePanel({
     if (w.role === "start") return "Start";
     if (w.role === "finish") return "Finish";
     viaIdx++;
-    return `Stop ${viaIdx}`;
+    return `Waypoint ${viaIdx}`;
   }
 
   const hasGeneratedOnce = plannerMode === "round_trip" && waypoints.length >= 2;
@@ -569,7 +569,7 @@ export function RoutePanel({
                       className="route-panel-waypoint-btn"
                       onClick={() => onMoveViaUp(w.id)}
                       disabled={idx <= 1}
-                      aria-label="Move stop up"
+                      aria-label="Move waypoint up"
                       title="Move up"
                     >
                       ↑
@@ -579,7 +579,7 @@ export function RoutePanel({
                       className="route-panel-waypoint-btn"
                       onClick={() => onMoveViaDown(w.id)}
                       disabled={idx >= waypoints.length - 2}
-                      aria-label="Move stop down"
+                      aria-label="Move waypoint down"
                       title="Move down"
                     >
                       ↓
@@ -588,7 +588,7 @@ export function RoutePanel({
                       type="button"
                       className="route-panel-waypoint-btn route-panel-waypoint-btn--remove"
                       onClick={() => onRemoveVia(w.id)}
-                      aria-label="Remove stop"
+                      aria-label="Remove waypoint"
                       title="Remove"
                     >
                       ✕
@@ -614,7 +614,7 @@ export function RoutePanel({
         </ul>
       )}
 
-      {/* Add stop button — visible in point-to-point mode once both endpoints are placed */}
+      {/* Add waypoint button — visible in point-to-point mode once both endpoints are placed */}
       {plannerMode === "point_to_point" && hasFinish && (
         <button
           type="button"
@@ -622,7 +622,7 @@ export function RoutePanel({
           onClick={onAddVia}
           disabled={deepLinkLoading}
         >
-          + Add stop
+          + Add waypoint
         </button>
       )}
 
