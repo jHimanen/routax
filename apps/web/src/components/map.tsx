@@ -21,6 +21,8 @@ import {
   type PlannerSnapshot,
   usePlannerHistory,
 } from "../hooks/usePlannerHistory";
+import { LogoMark } from "./LogoMark";
+import { RoutesNavLink } from "./RoutesNavLink";
 import { useRoute } from "../hooks/useRoute";
 import { createRoute, getRoute, importGpx, postRoute } from "../lib/api";
 import { SURFACE_PALETTE, buildSurfaceFeatureCollection } from "../lib/surfaces";
@@ -171,72 +173,6 @@ class FitRouteControl implements maplibregl.IControl {
   }
 }
 
-// Undo / redo buttons — top-left map control rail, always visible.
-// Callbacks and enable-states are supplied via refs so the control never
-// needs to be re-added when state changes.
-class HistoryControl implements maplibregl.IControl {
-  private container: HTMLElement | null = null;
-  private undoBtn: HTMLButtonElement | null = null;
-  private redoBtn: HTMLButtonElement | null = null;
-  private onUndo: () => void;
-  private onRedo: () => void;
-
-  // Lucide undo-2 / redo-2 paths
-  private static UNDO_SVG =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`;
-  private static REDO_SVG =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>`;
-
-  constructor(opts: { onUndo: () => void; onRedo: () => void }) {
-    this.onUndo = opts.onUndo;
-    this.onRedo = opts.onRedo;
-  }
-
-  onAdd(): HTMLElement {
-    const isMac =
-      typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
-    const undoShortcut = isMac ? "⌘Z" : "Ctrl+Z";
-    const redoShortcut = isMac ? "⌘⇧Z" : "Ctrl+Y";
-
-    this.container = document.createElement("div");
-    this.container.className = "maplibregl-ctrl maplibregl-ctrl-group history-ctrl-group";
-
-    this.undoBtn = document.createElement("button");
-    this.undoBtn.type = "button";
-    this.undoBtn.className = "maplibregl-ctrl-icon history-ctrl-btn";
-    this.undoBtn.setAttribute("aria-label", `Undo (${undoShortcut})`);
-    this.undoBtn.title = `Undo (${undoShortcut})`;
-    this.undoBtn.innerHTML = HistoryControl.UNDO_SVG;
-    this.undoBtn.disabled = true;
-    this.undoBtn.addEventListener("click", () => this.onUndo());
-
-    this.redoBtn = document.createElement("button");
-    this.redoBtn.type = "button";
-    this.redoBtn.className = "maplibregl-ctrl-icon history-ctrl-btn";
-    this.redoBtn.setAttribute("aria-label", `Redo (${redoShortcut})`);
-    this.redoBtn.title = `Redo (${redoShortcut})`;
-    this.redoBtn.innerHTML = HistoryControl.REDO_SVG;
-    this.redoBtn.disabled = true;
-    this.redoBtn.addEventListener("click", () => this.onRedo());
-
-    this.container.appendChild(this.undoBtn);
-    this.container.appendChild(this.redoBtn);
-    return this.container;
-  }
-
-  onRemove(): void {
-    this.container?.remove();
-    this.container = null;
-    this.undoBtn = null;
-    this.redoBtn = null;
-  }
-
-  updateState(canUndo: boolean, canRedo: boolean): void {
-    if (this.undoBtn) this.undoBtn.disabled = !canUndo;
-    if (this.redoBtn) this.redoBtn.disabled = !canRedo;
-  }
-}
-
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
 
 interface RoutaxMapProps {
@@ -253,10 +189,6 @@ interface RoutaxMapProps {
   /** When set, the map flies to this coordinate (cue centering). */
   cueCoord: [number, number] | null;
   panelOpen: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
 }
 
 function RoutaxMap({
@@ -272,10 +204,6 @@ function RoutaxMap({
   surfaceMapViz,
   cueCoord,
   panelOpen,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
 }: RoutaxMapProps): React.JSX.Element {
   const FINLAND_CENTER: [number, number] = [25.7482, 61.9241];
   const FINLAND_ZOOM = 4.8;
@@ -309,17 +237,6 @@ function RoutaxMap({
   }, [panelOpen]);
 
   const fitControlRef = useRef<FitRouteControl | null>(null);
-  const historyControlRef = useRef<HistoryControl | null>(null);
-
-  // Stable refs for onUndo/onRedo so the HistoryControl always calls the latest.
-  const onUndoRef = useRef(onUndo);
-  const onRedoRef = useRef(onRedo);
-  useEffect(() => {
-    onUndoRef.current = onUndo;
-  });
-  useEffect(() => {
-    onRedoRef.current = onRedo;
-  });
 
   // Map lifecycle
   useEffect(() => {
@@ -336,13 +253,6 @@ function RoutaxMap({
     map.addControl(new maplibregl.AttributionControl({ compact: false }));
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    const histCtrl = new HistoryControl({
-      onUndo: () => onUndoRef.current(),
-      onRedo: () => onRedoRef.current(),
-    });
-    map.addControl(histCtrl, "top-left");
-    historyControlRef.current = histCtrl;
-
     map.on("load", () => {
       onMapLoadedRef.current();
     });
@@ -357,17 +267,11 @@ function RoutaxMap({
     mapRef.current = map;
 
     return () => {
-      historyControlRef.current = null;
       map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [styleUrl]);
-
-  // Keep HistoryControl button states in sync with canUndo/canRedo.
-  useEffect(() => {
-    historyControlRef.current?.updateState(canUndo, canRedo);
-  }, [canUndo, canRedo]);
 
   // Cursor feedback
   useEffect(() => {
@@ -644,7 +548,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     targetDistanceKm: 50,
     directionBias: "any",
     roundTripSeed: 0,
-    resultOverride: null,
   });
   useLayoutEffect(() => {
     snapshotRef.current = {
@@ -655,9 +558,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       targetDistanceKm,
       directionBias,
       roundTripSeed,
-      resultOverride,
     };
   });
+
+  // Holds the canonical route result for the currently loaded/generated baseline.
+  // The modification detection effect derives resultOverride from this — it is the
+  // single source of truth for which result is "saved", separate from planner inputs.
+  const loadedResultRef = useRef<RouteResult | null>(null);
 
   const buildSnapshot = useCallback(
     (overrides: Partial<PlannerSnapshot> = {}): PlannerSnapshot => ({
@@ -681,7 +588,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setTargetDistanceKm(s.targetDistanceKm);
     setDirectionBias(s.directionBias);
     setRoundTripSeed(s.roundTripSeed);
-    setResultOverride(s.resultOverride);
+    // resultOverride is not stored in snapshots — the modification detection effect
+    // derives it from loadedResultRef vs the restored planner inputs.
   }, []);
 
   const doUndo = useCallback(() => {
@@ -726,6 +634,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       const savedProfile = { ...saved.profile };
       const savedResult = routeResultFromSaved(saved);
 
+      loadedResultRef.current = savedResult;
       setWaypoints(restoredWaypoints);
       setPreset(saved.preset);
       setProfile(savedProfile);
@@ -747,7 +656,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         targetDistanceKm: snapshotRef.current.targetDistanceKm,
         directionBias: snapshotRef.current.directionBias,
         roundTripSeed: snapshotRef.current.roundTripSeed,
-        resultOverride: savedResult,
       });
     },
     [historyReset],
@@ -778,9 +686,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     };
   }, [initialRouteId, isReady, savedFlagOn, applySavedRoute]);
 
-  // Recompute routeModified whenever planner state or baseline changes.
-  // Also clears the cached route geometry when state diverges from the baseline
-  // so the live pipeline re-runs. Handles the undo-back-to-baseline case correctly.
+  // Single owner of resultOverride: when planner inputs match the loaded baseline,
+  // restore the canonical result from loadedResultRef; when they diverge, clear it
+  // so the live pipeline re-runs. This is the only place that writes resultOverride,
+  // which eliminates any conflict with applySnapshot (which only restores inputs).
   useEffect(() => {
     if (!loadBaseline) return;
     const diverges =
@@ -792,10 +701,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       setRouteModified(true);
       setPlanningMetadata(null);
     } else {
+      setResultOverride(loadedResultRef.current);
       setRouteModified(false);
     }
-    // resultOverride intentionally excluded — it's a write target of this effect, not a trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [waypoints, preset, profile, loadBaseline]);
 
   const handleSave = useCallback(
@@ -831,6 +739,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       try {
         const text = await file.text();
         const res = await importGpx(text, file.name);
+        loadedResultRef.current = null;
         setResultOverride(null);
         setLoadBaseline(null);
         setRouteModified(false);
@@ -859,7 +768,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           targetDistanceKm: snapshotRef.current.targetDistanceKm,
           directionBias: snapshotRef.current.directionBias,
           roundTripSeed: 0,
-          resultOverride: null,
         });
       } catch (e) {
         setImportStatus({
@@ -872,6 +780,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   );
 
   const handleReset = useCallback(() => {
+    loadedResultRef.current = null;
     setWaypoints([]);
     setResultOverride(null);
     setLoadBaseline(null);
@@ -879,7 +788,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setPlanningMetadata(null);
     setRoundTripSeed(0);
     // Reset is undoable — push the cleared state so the user can undo it.
-    historyPush(buildSnapshot({ waypoints: [], resultOverride: null, roundTripSeed: 0 }));
+    historyPush(buildSnapshot({ waypoints: [], roundTripSeed: 0 }));
   }, [historyPush, buildSnapshot]);
 
   const handleStartReposition = useCallback(
@@ -1046,6 +955,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         const gw = res.generatedWaypoints ?? [];
         if (gw.length < 2) return;
 
+        loadedResultRef.current = res;
         setWaypoints(gw);
         setResultOverride(res);
         setLoadBaseline({ waypoints: gw, preset, profile });
@@ -1063,7 +973,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           targetDistanceKm,
           directionBias,
           roundTripSeed: nextSeed,
-          resultOverride: res,
         });
       } finally {
         setIsGenerating(false);
@@ -1203,8 +1112,39 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           ? "crosshair"
           : "grab";
 
+  const isMac = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
+  const undoShortcut = isMac ? "⌘Z" : "Ctrl+Z";
+  const redoShortcut = isMac ? "⌘⇧Z" : "Ctrl+Y";
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <header className="app-header">
+        <LogoMark size={28} />
+        <span className="app-header-wordmark">Routax</span>
+        <span className="app-header-divider" />
+        <RoutesNavLink />
+        <span className="app-header-divider" />
+        <button
+          type="button"
+          className="app-header-history-btn"
+          onClick={doUndo}
+          disabled={!canUndo}
+          aria-label={`Undo (${undoShortcut})`}
+          title={`Undo (${undoShortcut})`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+        </button>
+        <button
+          type="button"
+          className="app-header-history-btn"
+          onClick={doRedo}
+          disabled={!canRedo}
+          aria-label={`Redo (${redoShortcut})`}
+          title={`Redo (${redoShortcut})`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+        </button>
+      </header>
       <RoutaxMap
         waypoints={waypoints}
         routeGeoJSON={result?.geometry ?? null}
@@ -1218,10 +1158,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         surfaceMapViz={surfaceMapViz}
         cueCoord={cueCoord}
         panelOpen={panelOpen}
-        onUndo={doUndo}
-        onRedo={doRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
       />
       <RoutePanel
         waypoints={waypoints}
@@ -1261,6 +1197,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onMoveViaDown={handleMoveViaDown}
         plannerMode={plannerMode}
         onPlannerModeChange={(m) => {
+          loadedResultRef.current = null;
           setPlannerMode(m);
           setWaypoints([]);
           setResultOverride(null);
@@ -1272,7 +1209,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
             buildSnapshot({
               plannerMode: m,
               waypoints: [],
-              resultOverride: null,
               roundTripSeed: 0,
             }),
           );
