@@ -837,9 +837,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const handleMenuMoveFinish = useCallback((lngLat: LatLng) => {
     setClickMenu(null);
-    setWaypoints((prev) =>
-      prev.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w)),
-    );
+    setWaypoints((prev) => prev.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w)));
   }, []);
 
   // Escape clears all waypoints (when menu is not open)
