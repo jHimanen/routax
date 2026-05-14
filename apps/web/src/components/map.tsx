@@ -134,6 +134,40 @@ const SURFACE_PAINT_EXPRESSION = [
   "#c2682a", // fallback: features without a surface property render ochre
 ] as unknown as maplibregl.ExpressionSpecification;
 
+// Re-center button — a MapLibre IControl rendered in the top-right rail.
+// The recenter callback is supplied on construction and updated via a stable
+// ref in RoutaxMap so the button always calls the latest bounds/padding.
+class FitRouteControl implements maplibregl.IControl {
+  private container: HTMLElement | null = null;
+  private recenter: () => void;
+
+  constructor(recenter: () => void) {
+    this.recenter = recenter;
+  }
+
+  onAdd(): HTMLElement {
+    this.container = document.createElement("div");
+    this.container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "maplibregl-ctrl-icon fit-route-ctrl-btn";
+    btn.title = "Re-center on whole route";
+    btn.setAttribute("aria-label", "Re-center on whole route");
+    // Frame-corners SVG — square with inward-pointing arrows at each corner
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    btn.addEventListener("click", () => this.recenter());
+
+    this.container.appendChild(btn);
+    return this.container;
+  }
+
+  onRemove(): void {
+    this.container?.remove();
+    this.container = null;
+  }
+}
+
 // ── RoutaxMap ────────────────────────────────────────────────────────────────
 
 interface RoutaxMapProps {
@@ -187,6 +221,17 @@ function RoutaxMap({
   useEffect(() => {
     onWaypointMovedRef.current = onWaypointMoved;
   });
+
+  // Fit-once refs — track whether the current route session has been fitted,
+  // and hold the latest recenter callback for the FitRouteControl button.
+  const prevHadRouteRef = useRef(false);
+  const recenterCallbackRef = useRef<() => void>(() => {});
+  const panelOpenRef = useRef(panelOpen);
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
+
+  const fitControlRef = useRef<FitRouteControl | null>(null);
 
   // Map lifecycle
   useEffect(() => {
@@ -315,20 +360,47 @@ function RoutaxMap({
         });
       }
 
-      const isMobile = typeof window !== "undefined" && window.innerWidth <= 640;
-      const padding = isMobile
-        ? panelOpen
-          ? { top: 60, bottom: 320, left: 60, right: 60 }
-          : { top: 60, bottom: 60, left: 60, right: 60 }
-        : { top: 60, bottom: 60, left: 290, right: 60 };
+      // Recenter reads panelOpen via ref so panel-toggle doesn't cause a refit
+      const doRecenter = () => {
+        const isMobile = typeof window !== "undefined" && window.innerWidth <= 640;
+        const padding = isMobile
+          ? panelOpenRef.current
+            ? { top: 60, bottom: 320, left: 60, right: 60 }
+            : { top: 60, bottom: 60, left: 60, right: 60 }
+          : { top: 60, bottom: 60, left: 290, right: 60 };
+        map.fitBounds(bounds, { padding, animate: true });
+      };
+      recenterCallbackRef.current = doRecenter;
 
-      map.fitBounds(bounds, { padding, animate: true });
+      // Fit once per route session — not on every reroute, drag, or surface toggle
+      if (!prevHadRouteRef.current) {
+        doRecenter();
+        prevHadRouteRef.current = true;
+      }
     } else {
+      // Route cleared: reset so the next route session fits on first render
+      prevHadRouteRef.current = false;
+      recenterCallbackRef.current = () => {};
       if (map.getLayer(`${LAYER_ID}-hit`)) map.removeLayer(`${LAYER_ID}-hit`);
       if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     }
-  }, [routeGeoJSON, mapLoaded, surfaces, surfaceMapViz, panelOpen]);
+  }, [routeGeoJSON, mapLoaded, surfaces, surfaceMapViz]);
+  // panelOpen intentionally excluded from deps — recenterCallbackRef reads it via panelOpenRef
+
+  // Add / remove the Re-center control in the top-right rail based on route presence
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    if (routeGeoJSON && !fitControlRef.current) {
+      const ctrl = new FitRouteControl(() => recenterCallbackRef.current());
+      map.addControl(ctrl, "top-right");
+      fitControlRef.current = ctrl;
+    } else if (!routeGeoJSON && fitControlRef.current) {
+      map.removeControl(fitControlRef.current);
+      fitControlRef.current = null;
+    }
+  }, [routeGeoJSON, mapLoaded]);
 
   // Elevation hover marker
   const HOVER_SOURCE = "routax-hover";
