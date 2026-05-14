@@ -515,6 +515,8 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement | null>(null);
+  // Suppresses the map click that fires immediately after closing the menu via outside-click
+  const suppressNextMapClickRef = useRef(false);
 
   const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
     resultOverride,
@@ -683,6 +685,12 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const handleMapClick = useCallback(
     (lngLat: LatLng, screenPos: { x: number; y: number }) => {
+      // Swallow the click that immediately follows an outside-click menu dismissal
+      if (suppressNextMapClickRef.current) {
+        suppressNextMapClickRef.current = false;
+        return;
+      }
+
       // Reposition banner flow: next click moves the target endpoint without opening the menu
       if (repositionTarget !== null) {
         setWaypoints((prev) =>
@@ -840,15 +848,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     setWaypoints((prev) => prev.map((w) => (w.role === "finish" ? { ...w, position: lngLat } : w)));
   }, []);
 
-  // Escape clears all waypoints (when menu is not open)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !clickMenu) handleReset();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handleReset, clickMenu]);
-
   // Close click menu on outside-click or Escape
   useEffect(() => {
     if (!clickMenu) return;
@@ -858,6 +857,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     const onDown = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setClickMenu(null);
+        suppressNextMapClickRef.current = true;
       }
     };
     document.addEventListener("keydown", onKey);
