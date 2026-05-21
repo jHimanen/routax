@@ -162,7 +162,7 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
   const t = profile.avoidTraffic;
   const q = profile.preferQuietSurfaces;
   const g = profile.maxGradient;
-  const c = profile.preferCycleNetworks;
+  const cw = profile.preferCycleways;
   const l = profile.preferLargerRoads;
 
   const priority: unknown[] = [
@@ -193,18 +193,14 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
     priority.push({ if: "road_environment == FORD", multiply_by: "0" });
   }
 
-  // Cycle-network preference: boost signed LCN/RCN/NCN/ICN edges.
-  if (c > 0) {
-    priority.push(
-      {
-        if: "bike_network == INTERNATIONAL || bike_network == NATIONAL || bike_network == REGIONAL || bike_network == LOCAL",
-        multiply_by: (1 + c * 0.8).toFixed(2),
-      },
-      {
-        if: "bike_network == MISSING",
-        multiply_by: (1 - c * 0.4).toFixed(2),
-      },
-    );
+  // Cycleway preference: fresh `if` (not else_if) so it fires independently of the
+  // avoidTraffic chain. Compounds multiplicatively with the preferQuietSurfaces boost
+  // on CYCLEWAY — both being "on" is a legitimate cyclist choice.
+  if (cw > 0) {
+    priority.push({
+      if: "road_class == CYCLEWAY",
+      multiply_by: (1 + cw * 1.2).toFixed(2),
+    });
   }
 
   // Larger-roads preference: fresh `if` block (not else_if) so it fires independently
@@ -258,7 +254,7 @@ function resolveProfile(request: {
     avoidTraffic: overrides.avoidTraffic ?? defaults.avoidTraffic,
     preferQuietSurfaces: overrides.preferQuietSurfaces ?? defaults.preferQuietSurfaces,
     maxGradient: overrides.maxGradient ?? defaults.maxGradient,
-    preferCycleNetworks: overrides.preferCycleNetworks ?? defaults.preferCycleNetworks,
+    preferCycleways: overrides.preferCycleways ?? defaults.preferCycleways,
     preferLargerRoads: overrides.preferLargerRoads ?? defaults.preferLargerRoads,
     allowFerries: overrides.allowFerries ?? defaults.allowFerries,
     allowWaterCrossings: overrides.allowWaterCrossings ?? defaults.allowWaterCrossings,

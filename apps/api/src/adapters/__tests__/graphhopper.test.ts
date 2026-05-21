@@ -577,7 +577,7 @@ describe("GraphhopperRoutingProvider", () => {
       avoidTraffic: 0,
       preferQuietSurfaces: 0,
       maxGradient: 20,
-      preferCycleNetworks: 0,
+      preferCycleways: 0,
       preferLargerRoads: 0,
       allowFerries: false,
       allowWaterCrossings: false,
@@ -698,27 +698,42 @@ describe("GraphhopperRoutingProvider", () => {
       expect(hasWater).toBe(false);
     });
 
-    it("emits cycle-network boost when preferCycleNetworks > 0", () => {
+    it("emits cycleway boost when preferCycleways > 0", () => {
       const model = buildCustomModel(
-        { ...baseProfile, preferCycleNetworks: 1 },
+        { ...baseProfile, preferCycleways: 1 },
         "fastest_direct",
       ) as { priority: Array<{ if?: string; multiply_by?: string }> };
-      const rule = model.priority.find((r) => r.if?.includes("bike_network"));
+      const rule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
       expect(rule).toBeDefined();
-      expect(rule?.if).toContain("INTERNATIONAL");
-      expect(rule?.if).toContain("NATIONAL");
-      expect(rule?.if).toContain("REGIONAL");
-      expect(rule?.if).toContain("LOCAL");
-      // multiply_by = (1 + 1 * 0.8).toFixed(2) = "1.80"
-      expect(rule?.multiply_by).toBe("1.80");
+      // multiply_by = (1 + 1 * 1.2).toFixed(2) = "2.20"
+      expect(rule?.multiply_by).toBe("2.20");
+      // Old bike_network rules must not appear
+      const networkRule = model.priority.find((r) => r.if?.includes("bike_network"));
+      expect(networkRule).toBeUndefined();
     });
 
-    it("omits cycle-network boost when preferCycleNetworks: 0", () => {
+    it("omits cycleway boost when preferCycleways: 0", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
         priority: Array<{ if?: string }>;
       };
-      const rule = model.priority.find((r) => r.if?.includes("bike_network"));
+      const rule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
       expect(rule).toBeUndefined();
+    });
+
+    it("emits no bike_network rules for any preset", () => {
+      for (const preset of [
+        "fastest_direct",
+        "quiet_country_roads",
+        "maximum_climbing",
+        "avoid_gravel",
+      ] as const) {
+        const model = buildCustomModel(
+          { ...baseProfile, preferCycleways: 1 },
+          preset,
+        ) as { priority: Array<{ if?: string }> };
+        const networkRule = model.priority.find((r) => r.if?.includes("bike_network"));
+        expect(networkRule).toBeUndefined();
+      }
     });
 
     it("emits larger-roads boost as a fresh if block when preferLargerRoads > 0", () => {
