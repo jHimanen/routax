@@ -699,10 +699,9 @@ describe("GraphhopperRoutingProvider", () => {
     });
 
     it("emits cycleway boost when preferCycleways > 0", () => {
-      const model = buildCustomModel(
-        { ...baseProfile, preferCycleways: 1 },
-        "fastest_direct",
-      ) as { priority: Array<{ if?: string; multiply_by?: string }> };
+      const model = buildCustomModel({ ...baseProfile, preferCycleways: 1 }, "fastest_direct") as {
+        priority: Array<{ if?: string; multiply_by?: string }>;
+      };
       const rule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
       expect(rule).toBeDefined();
       // multiply_by = (1 + 1 * 1.2).toFixed(2) = "2.20"
@@ -727,10 +726,9 @@ describe("GraphhopperRoutingProvider", () => {
         "maximum_climbing",
         "avoid_gravel",
       ] as const) {
-        const model = buildCustomModel(
-          { ...baseProfile, preferCycleways: 1 },
-          preset,
-        ) as { priority: Array<{ if?: string }> };
+        const model = buildCustomModel({ ...baseProfile, preferCycleways: 1 }, preset) as {
+          priority: Array<{ if?: string }>;
+        };
         const networkRule = model.priority.find((r) => r.if?.includes("bike_network"));
         expect(networkRule).toBeUndefined();
       }
