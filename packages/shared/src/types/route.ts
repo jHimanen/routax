@@ -29,7 +29,7 @@ export const RoutingProfileSchema = z.object({
   avoidTraffic: z.number().min(0).max(1),
   preferQuietSurfaces: z.number().min(0).max(1),
   maxGradient: z.number().min(0).max(20),
-  preferCycleNetworks: z.number().min(0).max(1).default(0),
+  preferCycleways: z.number().min(0).max(1).default(0),
   preferLargerRoads: z.number().min(0).max(1).default(0),
   allowFerries: z.boolean().default(false),
   allowWaterCrossings: z.boolean().default(false),
@@ -44,8 +44,8 @@ export interface RoutingProfile {
   preferQuietSurfaces: number;
   /** Maximum acceptable gradient in percent (0–20). */
   maxGradient: number;
-  /** 0 = ignore, 1 = strongly prefer signed cycle network edges (LCN/RCN/NCN/ICN). */
-  preferCycleNetworks: number;
+  /** 0 = ignore; 1 = strongly prefer dedicated cycleways (`highway=cycleway`; in Part B also `bicycle=designated`). */
+  preferCycleways: number;
   /** 0 = ignore, 1 = strongly prefer SECONDARY/TERTIARY roads over tracks/paths. */
   preferLargerRoads: number;
   /** When true, ferry edges are routable. Default false. */
