@@ -125,7 +125,7 @@ services:
       MAILHOG_HOST: mailhog
       MAILHOG_SMTP_PORT: 1025
       API_PORT: 3001
-      ROUTAX_CORS_ALLOWLIST: https://localhost,https://routax.cc
+      ROUTAX_CORS_ALLOWLIST: http://localhost:3000,https://localhost,https://routax.cc
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:

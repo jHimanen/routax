@@ -119,7 +119,7 @@ describe("RoutingProfileSchema — backward compatibility", () => {
   it("parses a three-field legacy profile and defaults the new five fields", () => {
     const legacy = { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 };
     const parsed = RoutingProfileSchema.parse(legacy);
-    expect(parsed.preferCycleNetworks).toBe(0);
+    expect(parsed.preferCycleways).toBe(0);
     expect(parsed.preferLargerRoads).toBe(0);
     expect(parsed.allowFerries).toBe(false);
     expect(parsed.allowWaterCrossings).toBe(false);
@@ -131,13 +131,29 @@ describe("RoutingProfileSchema — backward compatibility", () => {
       avoidTraffic: 0.5,
       preferQuietSurfaces: 0.3,
       maxGradient: 10,
-      preferCycleNetworks: 0.8,
+      preferCycleways: 0.8,
       preferLargerRoads: 0.4,
       allowFerries: true,
       allowWaterCrossings: true,
       maxTrailDifficulty: 3,
     };
     expect(RoutingProfileSchema.parse(full)).toEqual(full);
+  });
+
+  it("silently drops preferCycleNetworks from an old eight-field JSONB profile", () => {
+    const old = {
+      avoidTraffic: 0.5,
+      preferQuietSurfaces: 0.3,
+      maxGradient: 10,
+      preferCycleNetworks: 0.8,
+      preferLargerRoads: 0.4,
+      allowFerries: false,
+      allowWaterCrossings: false,
+      maxTrailDifficulty: 3,
+    };
+    const result = RoutingProfileSchema.parse(old);
+    expect(result.preferCycleways).toBe(0);
+    expect("preferCycleNetworks" in result).toBe(false);
   });
 
   it("rejects maxTrailDifficulty outside 0–6", () => {

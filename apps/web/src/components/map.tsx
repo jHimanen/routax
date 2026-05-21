@@ -46,7 +46,7 @@ function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
     a.avoidTraffic === b.avoidTraffic &&
     a.preferQuietSurfaces === b.preferQuietSurfaces &&
     a.maxGradient === b.maxGradient &&
-    a.preferCycleNetworks === b.preferCycleNetworks &&
+    a.preferCycleways === b.preferCycleways &&
     a.preferLargerRoads === b.preferLargerRoads &&
     a.allowFerries === b.allowFerries &&
     a.allowWaterCrossings === b.allowWaterCrossings &&

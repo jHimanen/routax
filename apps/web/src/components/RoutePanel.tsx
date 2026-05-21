@@ -713,16 +713,16 @@ export function RoutePanel({
             />
           </label>
           <label className="route-panel-label">
-            <span>Prefer cycle networks</span>
+            <span>Prefer cycleways</span>
             <input
               type="range"
               min="0"
               max="1"
               step="0.01"
-              value={profile.preferCycleNetworks}
+              value={profile.preferCycleways}
               disabled={deepLinkLoading}
               onChange={(e) =>
-                onProfileChange({ ...profile, preferCycleNetworks: Number(e.target.value) })
+                onProfileChange({ ...profile, preferCycleways: Number(e.target.value) })
               }
               onPointerUp={onProfileCommit}
             />
