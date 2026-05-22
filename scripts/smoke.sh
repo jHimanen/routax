@@ -90,8 +90,8 @@ check_surfaces() {
 
 check_encoded_values() {
   local label="$1"
-  local details_json='["road_class","road_environment","road_access","max_speed","track_type","smoothness","bike_network","mtb_rating"]'
-  local evs=("road_class" "road_environment" "road_access" "max_speed" "track_type" "smoothness" "bike_network" "mtb_rating")
+  local details_json='["road_class","road_environment","road_access","max_speed","track_type","smoothness","bike_network","mtb_rating","bike_priority"]'
+  local evs=("road_class" "road_environment" "road_access" "max_speed" "track_type" "smoothness" "bike_network" "mtb_rating" "bike_priority")
 
   local tmpfile
   tmpfile=$(mktemp)
@@ -161,7 +161,7 @@ check_encoded_values "tampere-jyvaskyla"
 # Verify that all five new RoutingProfile fields are accepted by the API end-to-end.
 check "advanced-fields" POST "/api/route" 200 \
   -H "Content-Type: application/json" \
-  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct","advancedOverrides":{"allowFerries":true,"allowWaterCrossings":true,"preferCycleNetworks":1,"preferLargerRoads":1,"maxTrailDifficulty":6}}'
+  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct","advancedOverrides":{"allowFerries":true,"allowWaterCrossings":true,"preferCycleways":1,"preferLargerRoads":1,"maxTrailDifficulty":6}}'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

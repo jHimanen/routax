@@ -83,7 +83,7 @@ curl -X POST http://localhost:8989/route \
 
 ## Indexed encoded values
 
-The graph indexes ten encoded values. Any of these can be requested in
+The graph indexes eleven encoded values. Any of these can be requested in
 `details=` on a `/route` call to get per-segment arrays.
 
 ### Computed at import
@@ -105,6 +105,7 @@ The graph indexes ten encoded values. Any of these can be requested in
 | `smoothness` | `smoothness=*` | Pavement quality: `MISSING`, `EXCELLENT`, `GOOD`, `INTERMEDIATE`, `BAD`, `VERY_BAD`, `HORRIBLE`, `VERY_HORRIBLE`, `IMPASSABLE`, `OTHER` |
 | `bike_network` | `route=bicycle` relations | OSM cycling network membership: `MISSING`, `LOCAL`, `REGIONAL`, `NATIONAL`, `INTERNATIONAL`, `OTHER` |
 | `mtb_rating` | `mtb:scale=*` | MTB difficulty — numeric (0–6, Singletrail-Skala); use `mtb_rating > 2` in custom-model rules, not an enum comparison |
+| `bike_priority` | `bicycle=*`, `highway=cycleway` | Numeric priority score from the GH bike encoder. 4-bit EV in GH 11.0 — max stored value is 1.5 (VehiclePriority.PREFER; VERY_NICE=3.0 and BEST=10.0 are clamped). `highway=cycleway + bicycle=designated` reaches 1.5; undesignated cycleways vary (0.9–1.3); paths and roads range 0.8–1.3. Use `bike_priority >= 1.4` to target only peak-designated infrastructure. Non-cycleway `bicycle=designated` paths do not reach 1.5 in Finnish OSM data — see Task 27 Part B notes. |
 
 `lit` (`lit=*`, boolean illumination) was planned but is not a recognised encoded value in
 GH 11.0. It will be revisited when the image is upgraded to a version that supports it.
@@ -189,7 +190,7 @@ The Fastify API maps `RoutingProfile` fields to GraphHopper priority multipliers
 | `avoidTraffic` | 0–1 | PRIMARY: `1 - t*0.9`; SECONDARY: `1 - t*0.5` (else_if) |
 | `preferQuietSurfaces` | 0–1 | road_class CYCLEWAY/TRACK/LIVING_STREET/PATH: `1 + q*0.8` |
 | `maxGradient` | 0–20% | Edges steeper than `maxGradient` are penalised to 0.01 priority |
-| `preferCycleNetworks` | 0–1 | bike_network LOCAL/REGIONAL/NATIONAL/INTERNATIONAL: `1 + c*0.8` |
+| `preferCycleways` | 0–1 | road_class CYCLEWAY: `1 + cw*1.2`; bike_priority >= 3.0 (designated): `1 + cw*0.8` |
 | `preferLargerRoads` | 0–1 | road_class SECONDARY/TERTIARY: `1 + l*0.6` (independent `if`) |
 | `allowFerries` | boolean | When false, emits `road_environment == FERRY → 0` |
 | `allowWaterCrossings` | boolean | When false, emits `road_environment == FORD → 0` |
