@@ -193,13 +193,35 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
     priority.push({ if: "road_environment == FORD", multiply_by: "0" });
   }
 
-  // Cycleway preference: fresh `if` (not else_if) so it fires independently of the
-  // avoidTraffic chain. Compounds multiplicatively with the preferQuietSurfaces boost
-  // on CYCLEWAY — both being "on" is a legitimate cyclist choice.
+  // Cycleway preference: two independent `if` blocks (not else_if) so each fires
+  // regardless of the avoidTraffic chain above.
+  //
+  // Block 1 (road_class == CYCLEWAY): boosts all highway=cycleway regardless of
+  //   designation tagging. Factor 1.2 → mid-slider (cw=0.5) = 1.60×, full = 2.20×.
+  //
+  // Block 2 (bike_priority >= 1.4): targets segments the GH bike encoder marks as
+  //   highest-priority cycling infrastructure. bike_priority is a numeric EV with
+  //   4-bit storage in GH 11.0 — max stored value is 1.5 (VehiclePriority.PREFER).
+  //   Values: SLIGHT_PREFER=1.2, PREFER=1.5; VERY_NICE (3.0) and BEST (10.0) are
+  //   clamped to 1.5. Empirically, only road_class==cycleway segments reach >=1.4;
+  //   the subset that do (bp=1.5) correspond to bicycle=designated cycleways. Factor
+  //   0.8 → mid-slider = 1.40×, full = 1.80×.
+  //
+  // Combined effect at cw=1: a highway=cycleway + bicycle=designated way gets
+  //   2.20 × 1.80 = 3.96× total. Intentional — maximally designated infrastructure
+  //   deserves the strongest pull. Undesignated cycleways (bp<1.4) get only 2.20×.
+  //
+  // Limitation: highway=path + bicycle=designated segments max out at bp=1.2 in
+  //   Finnish OSM data, so block 2 does NOT extend to non-cycleway designated paths.
+  //   That coverage requires a higher-resolution bike_priority EV (GH 12+).
   if (cw > 0) {
     priority.push({
       if: "road_class == CYCLEWAY",
       multiply_by: (1 + cw * 1.2).toFixed(2),
+    });
+    priority.push({
+      if: "bike_priority >= 1.4",
+      multiply_by: (1 + cw * 0.8).toFixed(2),
     });
   }
 

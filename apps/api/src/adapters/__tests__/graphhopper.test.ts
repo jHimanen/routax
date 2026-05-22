@@ -702,21 +702,26 @@ describe("GraphhopperRoutingProvider", () => {
       const model = buildCustomModel({ ...baseProfile, preferCycleways: 1 }, "fastest_direct") as {
         priority: Array<{ if?: string; multiply_by?: string }>;
       };
-      const rule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
-      expect(rule).toBeDefined();
-      // multiply_by = (1 + 1 * 1.2).toFixed(2) = "2.20"
-      expect(rule?.multiply_by).toBe("2.20");
+      // Block 1: road_class == CYCLEWAY (factor 1.2 → 2.20× at cw=1)
+      const cwRule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
+      expect(cwRule).toBeDefined();
+      expect(cwRule?.multiply_by).toBe("2.20");
+      // Block 2: bike_priority >= 1.4 (designated cycleways; GH 11.0 max is 1.5)
+      // factor 0.8 → 1.80× at cw=1
+      const bpRule = model.priority.find((r) => r.if === "bike_priority >= 1.4");
+      expect(bpRule).toBeDefined();
+      expect(bpRule?.multiply_by).toBe("1.80");
       // Old bike_network rules must not appear
       const networkRule = model.priority.find((r) => r.if?.includes("bike_network"));
       expect(networkRule).toBeUndefined();
     });
 
-    it("omits cycleway boost when preferCycleways: 0", () => {
+    it("omits cycleway and bike_priority boosts when preferCycleways: 0", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
         priority: Array<{ if?: string }>;
       };
-      const rule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
-      expect(rule).toBeUndefined();
+      expect(model.priority.find((r) => r.if === "road_class == CYCLEWAY")).toBeUndefined();
+      expect(model.priority.find((r) => r.if === "bike_priority >= 1.4")).toBeUndefined();
     });
 
     it("emits no bike_network rules for any preset", () => {
