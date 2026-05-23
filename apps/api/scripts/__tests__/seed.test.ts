@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { Pool } from "pg";
 import { v5 as uuidv5 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -95,14 +98,24 @@ describe("seed script", () => {
   // ── Routes ─────────────────────────────────────────────────────────────────
 
   it("seedRoutes() rejects a stale frozen fixture", async () => {
+    const tmpPath = path.join(os.tmpdir(), "routax-stale-fixture-test.json");
+    fs.writeFileSync(
+      tmpPath,
+      JSON.stringify({
+        generatedAt: "2000-01-01T00:00:00.000Z",
+        definitionsHash: "000000000000dead",
+        routes: [],
+      }),
+    );
     const testPool = createPool();
     const container = createContainer(testPool);
     try {
-      await expect(seedRoutes(pool, container, "frozen")).rejects.toThrow(
+      await expect(seedRoutes(pool, container, "frozen", tmpPath)).rejects.toThrow(
         "Frozen fixture is stale",
       );
     } finally {
       await container.close();
+      fs.unlinkSync(tmpPath);
     }
   });
 

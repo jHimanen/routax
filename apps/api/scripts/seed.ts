@@ -280,11 +280,12 @@ export async function seedRoutes(
   pool: Pool,
   container: Container,
   mode: "live" | "frozen",
+  fixturePath?: string,
 ): Promise<number> {
   let fixtureMap: Map<string, RouteResult> | undefined;
 
   if (mode === "frozen") {
-    const raw = fs.readFileSync(FIXTURE_PATH, "utf8");
+    const raw = fs.readFileSync(fixturePath ?? FIXTURE_PATH, "utf8");
     const data = JSON.parse(raw) as FixtureFile;
     const currentHash = computeDefinitionsHash();
     if (data.definitionsHash !== currentHash) {
