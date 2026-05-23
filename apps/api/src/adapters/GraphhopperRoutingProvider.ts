@@ -242,6 +242,7 @@ function resolveProfile(request: {
     preferSmoothSurfaces: overrides.preferSmoothSurfaces ?? defaults.preferSmoothSurfaces,
     maxGradient: overrides.maxGradient ?? defaults.maxGradient,
     preferCycleways: overrides.preferCycleways ?? defaults.preferCycleways,
+    minimiseClimbing: overrides.minimiseClimbing ?? defaults.minimiseClimbing,
     allowFerries: overrides.allowFerries ?? defaults.allowFerries,
     allowWaterCrossings: overrides.allowWaterCrossings ?? defaults.allowWaterCrossings,
     maxTrailDifficulty: overrides.maxTrailDifficulty ?? defaults.maxTrailDifficulty,

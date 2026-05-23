@@ -121,17 +121,19 @@ describe("RoutingProfileSchema — backward compatibility", () => {
     const parsed = RoutingProfileSchema.parse(legacy);
     expect(parsed.preferCycleways).toBe(0);
     expect(parsed.preferSmoothSurfaces).toBe(0);
+    expect(parsed.minimiseClimbing).toBe(0);
     expect(parsed.allowFerries).toBe(false);
     expect(parsed.allowWaterCrossings).toBe(false);
     expect(parsed.maxTrailDifficulty).toBe(6);
   });
 
-  it("round-trips a fully-populated seven-field profile unchanged", () => {
+  it("round-trips a fully-populated profile unchanged", () => {
     const full = {
       avoidTraffic: 0.5,
       preferSmoothSurfaces: 0.7,
       maxGradient: 10,
       preferCycleways: 0.8,
+      minimiseClimbing: 0.4,
       allowFerries: true,
       allowWaterCrossings: true,
       maxTrailDifficulty: 3,

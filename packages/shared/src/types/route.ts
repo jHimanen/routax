@@ -30,6 +30,7 @@ export const RoutingProfileSchema = z.object({
   preferSmoothSurfaces: z.number().min(0).max(1).default(0),
   maxGradient: z.number().min(0).max(20),
   preferCycleways: z.number().min(0).max(1).default(0),
+  minimiseClimbing: z.number().min(0).max(1).default(0),
   allowFerries: z.boolean().default(false),
   allowWaterCrossings: z.boolean().default(false),
   // 0–6 mirrors OSM mtb:scale; 6 = no cap (rule `mtb_rating > 6` never fires on real data)
@@ -45,6 +46,8 @@ export interface RoutingProfile {
   maxGradient: number;
   /** 0 = ignore; 1 = strongly prefer dedicated cycling infrastructure. Separate cycleways rewarded more than bike lanes on roads. */
   preferCycleways: number;
+  /** 0 = no effect; 1 = strongly trade route length for reduced elevation gain. Uses slope-band penalties + lower distance_influence. average_slope is unsigned so this minimises total hilliness (ascent + descent), which is acceptable for long-distance riders. */
+  minimiseClimbing: number;
   /** When true, ferry edges are routable. Default false. */
   allowFerries: boolean;
   /** When true, ford crossings are routable. Default false. */
