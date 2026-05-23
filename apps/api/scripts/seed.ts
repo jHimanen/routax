@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -150,7 +151,16 @@ interface RouteFixture {
 
 interface FixtureFile {
   generatedAt: string;
+  /** SHA-256 (truncated) of ROUTE_DEFINITIONS slug+profile pairs. Stale if absent or mismatched. */
+  definitionsHash?: string;
   routes: RouteFixture[];
+}
+
+// ── Fixture hash ─────────────────────────────────────────────────────────────
+
+function computeDefinitionsHash(): string {
+  const data = ROUTE_DEFINITIONS.map((d) => ({ slug: d.slug, profile: d.profile }));
+  return createHash("sha256").update(JSON.stringify(data)).digest("hex").slice(0, 16);
 }
 
 // ── Env loading ──────────────────────────────────────────────────────────────
@@ -276,6 +286,13 @@ export async function seedRoutes(
   if (mode === "frozen") {
     const raw = fs.readFileSync(FIXTURE_PATH, "utf8");
     const data = JSON.parse(raw) as FixtureFile;
+    const currentHash = computeDefinitionsHash();
+    if (data.definitionsHash !== currentHash) {
+      throw new Error(
+        `Frozen fixture is stale (hash ${data.definitionsHash ?? "missing"} ≠ ${currentHash}).\n` +
+          "Start GraphHopper and run: pnpm tsx scripts/seed.ts --write-fixtures",
+      );
+    }
     fixtureMap = new Map(data.routes.map((r) => [r.slug, r.result]));
   }
 
@@ -368,7 +385,11 @@ async function writeFixtures(container: Container): Promise<void> {
     });
     routes.push({ slug: def.slug, name: def.name, result });
   }
-  const fixture: FixtureFile = { generatedAt: new Date().toISOString(), routes };
+  const fixture: FixtureFile = {
+    generatedAt: new Date().toISOString(),
+    definitionsHash: computeDefinitionsHash(),
+    routes,
+  };
   fs.writeFileSync(FIXTURE_PATH, `${JSON.stringify(fixture, null, 2)}\n`, "utf8");
   console.log(`Fixtures written to ${FIXTURE_PATH}`);
 }
