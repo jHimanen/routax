@@ -158,10 +158,10 @@ check_surfaces "tampere-jyvaskyla" \
 # Calls GH at $GH_URL (not through the Routax API, which does not expose details=).
 check_encoded_values "tampere-jyvaskyla"
 
-# Verify that all five new RoutingProfile fields are accepted by the API end-to-end.
+# Verify that all RoutingProfile fields are accepted by the API end-to-end.
 check "advanced-fields" POST "/api/route" 200 \
   -H "Content-Type: application/json" \
-  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct","advancedOverrides":{"allowFerries":true,"allowWaterCrossings":true,"preferCycleways":1,"preferLargerRoads":1,"maxTrailDifficulty":6}}'
+  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct","advancedOverrides":{"allowFerries":true,"allowWaterCrossings":true,"preferCycleways":1,"preferSmoothSurfaces":0.8,"maxTrailDifficulty":6}}'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
