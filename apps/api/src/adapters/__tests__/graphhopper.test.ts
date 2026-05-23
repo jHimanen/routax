@@ -608,7 +608,7 @@ describe("GraphhopperRoutingProvider", () => {
     });
 
     it("avoid_gravel (with preferSmoothSurfaces: 0.9) emits a paved-surface reward rule", () => {
-      const avoidGravelProfile = PRESET_DEFAULTS["avoid_gravel"];
+      const avoidGravelProfile = PRESET_DEFAULTS.avoid_gravel;
       const model = buildCustomModel(avoidGravelProfile, "avoid_gravel") as {
         priority: Array<{ if?: string }>;
       };
@@ -707,9 +707,7 @@ describe("GraphhopperRoutingProvider", () => {
       expect(primaryRule).toBeDefined();
       expect(primaryRule?.multiply_by).toBe("0.10"); // (1 - 1 * 0.9)
 
-      const secondaryRule = model.priority.find(
-        (r) => r.else_if === "road_class == SECONDARY",
-      );
+      const secondaryRule = model.priority.find((r) => r.else_if === "road_class == SECONDARY");
       expect(secondaryRule).toBeDefined();
       expect(secondaryRule?.multiply_by).toBe("0.50"); // (1 - 1 * 0.5)
 
@@ -726,8 +724,8 @@ describe("GraphhopperRoutingProvider", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
         priority: Array<{ if?: string; else_if?: string }>;
       };
-      const hasRoadClass = model.priority.some(
-        (r) => (r.if ?? r.else_if ?? "").includes("road_class"),
+      const hasRoadClass = model.priority.some((r) =>
+        (r.if ?? r.else_if ?? "").includes("road_class"),
       );
       expect(hasRoadClass).toBe(false);
     });
@@ -758,9 +756,7 @@ describe("GraphhopperRoutingProvider", () => {
         priority: Array<{ if?: string; else_if?: string }>;
       };
       expect(model.priority.find((r) => r.if === "road_class == CYCLEWAY")).toBeUndefined();
-      expect(
-        model.priority.find((r) => r.else_if === "bike_priority >= 1.4"),
-      ).toBeUndefined();
+      expect(model.priority.find((r) => r.else_if === "bike_priority >= 1.4")).toBeUndefined();
     });
 
     it("emits no bike_network rules for any preset", () => {
@@ -811,10 +807,11 @@ describe("GraphhopperRoutingProvider", () => {
         const hasLargerRoads = model.priority.some((r) =>
           (r.if ?? "").includes("road_class == SECONDARY || road_class == TERTIARY"),
         );
-        const hasGravelPenalty = model.priority.some((r) =>
-          (r.if ?? "").includes("GRAVEL") ||
-          (r.if ?? "").includes("UNPAVED") ||
-          (r.if ?? "").includes("COMPACTED"),
+        const hasGravelPenalty = model.priority.some(
+          (r) =>
+            (r.if ?? "").includes("GRAVEL") ||
+            (r.if ?? "").includes("UNPAVED") ||
+            (r.if ?? "").includes("COMPACTED"),
         );
         expect(hasLargerRoads, `${preset} should not emit larger-roads rule`).toBe(false);
         expect(hasGravelPenalty, `${preset} should not emit hard gravel penalty`).toBe(false);
