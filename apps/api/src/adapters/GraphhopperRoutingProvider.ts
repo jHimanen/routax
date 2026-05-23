@@ -151,18 +151,14 @@ export function parseSurfaceDetails(
   return surfaces;
 }
 
-const DISTANCE_INFLUENCE: Record<RouteProfilePreset, number> = {
-  fastest_direct: 60,
-  quiet_country_roads: 80,
-  maximum_climbing: 75,
-  avoid_gravel: 75,
-};
+const BASE_DISTANCE_INFLUENCE = 75;
 
-export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePreset): unknown {
+export function buildCustomModel(profile: RoutingProfile): unknown {
   const t = profile.avoidTraffic;
   const cw = profile.preferCycleways;
   const g = profile.maxGradient;
   const s = profile.preferSmoothSurfaces;
+  const c = profile.minimiseClimbing;
 
   // Zero baseline: only the gradient hard-cap fires at all-zero sliders.
   const priority: unknown[] = [
@@ -212,7 +208,7 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
 
   // Prefer smooth surfaces: reward paved segments. At s=0 nothing fires (zero baseline).
   // Replaces the old avoid_gravel preset hard penalties with a softer reward model.
-  // Verify ASPHALT/CONCRETE/PAVED names against GET /info before merging.
+  // ASPHALT/CONCRETE/PAVED confirmed against GET /info (task 28).
   if (s > 0) {
     priority.push({
       if: "surface == ASPHALT || surface == CONCRETE || surface == PAVED",
@@ -220,14 +216,21 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
     });
   }
 
-  // MTB cap: hard exclusion. Default 6 means `mtb_rating > 6` never fires on real OSM data.
-  if (profile.maxTrailDifficulty < 6) {
-    priority.push({ if: `mtb_rating > ${profile.maxTrailDifficulty}`, multiply_by: "0" });
+  // Minimise climbing: slope-band priority penalties (steepest first, else_if) + reduced
+  // distance_influence so the router accepts longer detours to avoid penalised climbs.
+  // average_slope is unsigned in GH (absolute value), so this penalises overall hilliness
+  // (ascent + descent) — documented intent, acceptable for long-distance riders.
+  if (c > 0) {
+    priority.push(
+      { if: "average_slope > 9", multiply_by: (1 - c * 0.7).toFixed(2) },
+      { else_if: "average_slope > 6", multiply_by: (1 - c * 0.5).toFixed(2) },
+      { else_if: "average_slope > 3", multiply_by: (1 - c * 0.3).toFixed(2) },
+    );
   }
 
   return {
     priority,
-    distance_influence: DISTANCE_INFLUENCE[preset],
+    distance_influence: Math.round(BASE_DISTANCE_INFLUENCE * (1 - c * 0.6)),
   };
 }
 
@@ -353,7 +356,6 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
     from: { lat: number; lng: number },
     to: { lat: number; lng: number },
     profile: RoutingProfile,
-    preset: RouteProfilePreset,
   ): Promise<RouteResult> {
     const body = {
       points: [
@@ -365,7 +367,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       points_encoded: false,
       "ch.disable": true,
       instructions: true,
-      custom_model: buildCustomModel(profile, preset),
+      custom_model: buildCustomModel(profile),
       details: ["surface"],
     };
 
@@ -421,7 +423,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       pts.slice(0, -1).map((from, i) => {
         const to = pts[i + 1];
         if (!to) throw new Error(`Missing waypoint at index ${i + 1}`);
-        return this.planLeg(from, to, profile, request.preset).catch((err: unknown) => {
+        return this.planLeg(from, to, profile).catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : String(err);
           throw new Error(`Leg ${i + 1}→${i + 2} is unroutable: ${msg}`);
         });
@@ -445,7 +447,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       algorithm: "round_trip",
       "round_trip.distance": request.targetDistanceKm * 1000,
       "round_trip.seed": request.seed ?? 0,
-      custom_model: buildCustomModel(profile, request.preset),
+      custom_model: buildCustomModel(profile),
       details: ["surface"],
     };
 
