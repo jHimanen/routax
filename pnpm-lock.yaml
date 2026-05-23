@@ -115,6 +115,10 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.17)(terser@5.46.2)(tsx@4.21.0)
 
 packages:
 

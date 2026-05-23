@@ -116,23 +116,22 @@ describe("CreateRouteRequestSchema", () => {
 });
 
 describe("RoutingProfileSchema — backward compatibility", () => {
-  it("parses a three-field legacy profile and defaults the new five fields", () => {
-    const legacy = { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 };
+  it("parses a two-field legacy profile and defaults the new fields", () => {
+    const legacy = { avoidTraffic: 0.8, maxGradient: 8 };
     const parsed = RoutingProfileSchema.parse(legacy);
     expect(parsed.preferCycleways).toBe(0);
-    expect(parsed.preferLargerRoads).toBe(0);
+    expect(parsed.preferSmoothSurfaces).toBe(0);
     expect(parsed.allowFerries).toBe(false);
     expect(parsed.allowWaterCrossings).toBe(false);
     expect(parsed.maxTrailDifficulty).toBe(6);
   });
 
-  it("round-trips a fully-populated eight-field profile unchanged", () => {
+  it("round-trips a fully-populated seven-field profile unchanged", () => {
     const full = {
       avoidTraffic: 0.5,
-      preferQuietSurfaces: 0.3,
+      preferSmoothSurfaces: 0.7,
       maxGradient: 10,
       preferCycleways: 0.8,
-      preferLargerRoads: 0.4,
       allowFerries: true,
       allowWaterCrossings: true,
       maxTrailDifficulty: 3,
@@ -140,13 +139,29 @@ describe("RoutingProfileSchema — backward compatibility", () => {
     expect(RoutingProfileSchema.parse(full)).toEqual(full);
   });
 
-  it("silently drops preferCycleNetworks from an old eight-field JSONB profile", () => {
+  it("silently drops preferQuietSurfaces and preferLargerRoads from old JSONB profiles", () => {
     const old = {
       avoidTraffic: 0.5,
       preferQuietSurfaces: 0.3,
       maxGradient: 10,
-      preferCycleNetworks: 0.8,
+      preferCycleways: 0.8,
       preferLargerRoads: 0.4,
+      allowFerries: false,
+      allowWaterCrossings: false,
+      maxTrailDifficulty: 3,
+    };
+    const result = RoutingProfileSchema.parse(old);
+    expect("preferQuietSurfaces" in result).toBe(false);
+    expect("preferLargerRoads" in result).toBe(false);
+    expect(result.preferSmoothSurfaces).toBe(0); // defaults to 0
+    expect(result.preferCycleways).toBe(0.8); // preserved
+  });
+
+  it("silently drops preferCycleNetworks from an old JSONB profile", () => {
+    const old = {
+      avoidTraffic: 0.5,
+      maxGradient: 10,
+      preferCycleNetworks: 0.8,
       allowFerries: false,
       allowWaterCrossings: false,
       maxTrailDifficulty: 3,
