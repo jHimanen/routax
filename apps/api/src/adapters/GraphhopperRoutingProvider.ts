@@ -1,14 +1,12 @@
-import {
-  type CueEntry,
-  PRESET_DEFAULTS,
-  type PointToPointRequest,
-  type RoundTripRequest,
-  type RouteProfilePreset,
-  type RouteResult,
-  type RoutingProfile,
-  type RoutingProvider,
-  type SurfaceClass,
-  type Waypoint,
+import type {
+  CueEntry,
+  PointToPointRequest,
+  RoundTripRequest,
+  RouteResult,
+  RoutingProfile,
+  RoutingProvider,
+  SurfaceClass,
+  Waypoint,
 } from "@routax/shared";
 
 interface GhInstruction {
@@ -234,24 +232,6 @@ export function buildCustomModel(profile: RoutingProfile): unknown {
   };
 }
 
-function resolveProfile(request: {
-  preset: RouteProfilePreset;
-  advancedOverrides?: Partial<RoutingProfile>;
-}): RoutingProfile {
-  const defaults = PRESET_DEFAULTS[request.preset];
-  const overrides = request.advancedOverrides ?? {};
-  return {
-    avoidTraffic: overrides.avoidTraffic ?? defaults.avoidTraffic,
-    preferSmoothSurfaces: overrides.preferSmoothSurfaces ?? defaults.preferSmoothSurfaces,
-    maxGradient: overrides.maxGradient ?? defaults.maxGradient,
-    preferCycleways: overrides.preferCycleways ?? defaults.preferCycleways,
-    minimiseClimbing: overrides.minimiseClimbing ?? defaults.minimiseClimbing,
-    allowFerries: overrides.allowFerries ?? defaults.allowFerries,
-    allowWaterCrossings: overrides.allowWaterCrossings ?? defaults.allowWaterCrossings,
-    maxTrailDifficulty: overrides.maxTrailDifficulty ?? defaults.maxTrailDifficulty,
-  };
-}
-
 const DIRECTION_HEADINGS: Record<string, number | undefined> = {
   any: undefined,
   north: 0,
@@ -416,7 +396,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
   }
 
   async planRoute(request: PointToPointRequest): Promise<RouteResult> {
-    const profile = resolveProfile(request);
+    const profile = request.profile;
     const pts = request.waypoints;
 
     const legResults = await Promise.all(
@@ -434,7 +414,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
   }
 
   async planRoundTrip(request: RoundTripRequest): Promise<RouteResult> {
-    const profile = resolveProfile(request);
+    const profile = request.profile;
     const heading = DIRECTION_HEADINGS[request.directionBias ?? "any"];
 
     const body: Record<string, unknown> = {

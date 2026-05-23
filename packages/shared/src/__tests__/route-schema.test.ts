@@ -11,7 +11,6 @@ describe("RoutingProfileSchema", () => {
       minimiseClimbing: 0.6,
       allowFerries: true,
       allowWaterCrossings: false,
-      maxTrailDifficulty: 3,
     };
     expect(RoutingProfileSchema.parse(profile)).toEqual(profile);
   });
@@ -23,7 +22,6 @@ describe("RoutingProfileSchema", () => {
       preferCycleways: 0,
       allowFerries: false,
       allowWaterCrossings: false,
-      maxTrailDifficulty: 6,
     };
     const parsed = RoutingProfileSchema.parse(profile);
     expect(parsed.preferSmoothSurfaces).toBe(0);
@@ -40,7 +38,6 @@ describe("RoutingProfileSchema", () => {
         preferLargerRoads: 0.2,
         allowFerries: false,
         allowWaterCrossings: false,
-        maxTrailDifficulty: 4,
       };
       const result = RoutingProfileSchema.parse(old);
       expect("preferQuietSurfaces" in result).toBe(false);
@@ -49,6 +46,21 @@ describe("RoutingProfileSchema", () => {
       expect(result.minimiseClimbing).toBe(0);
       expect(result.avoidTraffic).toBe(0.8);
       expect(result.preferCycleways).toBe(0.6);
+    });
+
+    it("silently drops maxTrailDifficulty from old JSONB profiles", () => {
+      const old = {
+        avoidTraffic: 0.5,
+        maxGradient: 10,
+        preferCycleways: 0.8,
+        allowFerries: false,
+        allowWaterCrossings: false,
+        maxTrailDifficulty: 3,
+      };
+      const result = RoutingProfileSchema.parse(old);
+      expect("maxTrailDifficulty" in result).toBe(false);
+      expect(result.minimiseClimbing).toBe(0);
+      expect(result.preferCycleways).toBe(0.8);
     });
   });
 });

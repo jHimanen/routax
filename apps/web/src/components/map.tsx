@@ -3,10 +3,9 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
+  DEFAULT_PROFILE,
   type LatLng,
-  PRESET_DEFAULTS,
   type PlanningMetadata,
-  type RouteProfilePreset,
   type RouteResult,
   type RoutingProfile,
   type SavedRoute,
@@ -47,9 +46,9 @@ function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
     a.preferSmoothSurfaces === b.preferSmoothSurfaces &&
     a.maxGradient === b.maxGradient &&
     a.preferCycleways === b.preferCycleways &&
+    a.minimiseClimbing === b.minimiseClimbing &&
     a.allowFerries === b.allowFerries &&
-    a.allowWaterCrossings === b.allowWaterCrossings &&
-    a.maxTrailDifficulty === b.maxTrailDifficulty
+    a.allowWaterCrossings === b.allowWaterCrossings
   );
 }
 
@@ -467,17 +466,13 @@ function RoutaxMap({
 
 // ── RouteMap ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_PRESET: RouteProfilePreset = "fastest_direct";
-
 export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): React.JSX.Element {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
-  const [preset, setPreset] = useState<RouteProfilePreset>(DEFAULT_PRESET);
-  const [profile, setProfile] = useState<RoutingProfile>(PRESET_DEFAULTS[DEFAULT_PRESET]);
+  const [profile, setProfile] = useState<RoutingProfile>(DEFAULT_PROFILE);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [resultOverride, setResultOverride] = useState<RouteResult | null>(null);
   const [loadBaseline, setLoadBaseline] = useState<{
     waypoints: Waypoint[];
-    preset: RouteProfilePreset;
     profile: RoutingProfile;
   } | null>(null);
   const [routeModified, setRouteModified] = useState(false);
@@ -522,7 +517,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   // Suppresses the map click that fires immediately after closing the menu via outside-click
   const suppressNextMapClickRef = useRef(false);
 
-  const { result, isLoading, error } = useRoute(waypoints, preset, profile, {
+  const { result, isLoading, error } = useRoute(waypoints, profile, {
     resultOverride,
   });
 
@@ -541,8 +536,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   // even when called from a debounced / event-based context (e.g. onPointerUp).
   const snapshotRef = useRef<PlannerSnapshot>({
     waypoints: [],
-    preset: DEFAULT_PRESET,
-    profile: PRESET_DEFAULTS[DEFAULT_PRESET],
+    profile: DEFAULT_PROFILE,
     plannerMode: "point_to_point",
     targetDistanceKm: 50,
     directionBias: "any",
@@ -551,7 +545,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   useLayoutEffect(() => {
     snapshotRef.current = {
       waypoints,
-      preset,
       profile,
       plannerMode,
       targetDistanceKm,
@@ -581,7 +574,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
   const applySnapshot = useCallback((s: PlannerSnapshot) => {
     setWaypoints(s.waypoints);
-    setPreset(s.preset);
     setProfile(s.profile);
     setPlannerMode(s.plannerMode);
     setTargetDistanceKm(s.targetDistanceKm);
@@ -635,12 +627,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       loadedResultRef.current = savedResult;
       setWaypoints(restoredWaypoints);
-      setPreset(saved.preset);
       setProfile(savedProfile);
       setResultOverride(savedResult);
       setLoadBaseline({
         waypoints: restoredWaypoints,
-        preset: saved.preset,
         profile: savedProfile,
       });
       setRouteModified(false);
@@ -649,7 +639,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       // Load is a navigation event — reset history so the loaded state is the baseline.
       historyReset({
         waypoints: restoredWaypoints,
-        preset: saved.preset,
         profile: savedProfile,
         plannerMode: snapshotRef.current.plannerMode,
         targetDistanceKm: snapshotRef.current.targetDistanceKm,
@@ -693,7 +682,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     if (!loadBaseline) return;
     const diverges =
       !waypointsEqual(waypoints, loadBaseline.waypoints) ||
-      preset !== loadBaseline.preset ||
       !profileEqual(profile, loadBaseline.profile);
     if (diverges) {
       setResultOverride(null);
@@ -703,14 +691,13 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       setResultOverride(loadedResultRef.current);
       setRouteModified(false);
     }
-  }, [waypoints, preset, profile, loadBaseline]);
+  }, [waypoints, profile, loadBaseline]);
 
   const handleSave = useCallback(
     async (name: string) => {
       if (!result) throw new Error("No route to save");
       const created = await createRoute({
         name,
-        preset,
         profile,
         geometry: result.geometry,
         distance: Math.round(result.distance),
@@ -725,7 +712,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       });
       return created.id;
     },
-    [result, preset, profile, waypoints, planningMetadata],
+    [result, profile, waypoints, planningMetadata],
   );
 
   const handleCueSelect = useCallback(([lng, lat]: [number, number]) => {
@@ -761,7 +748,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         // GPX import is a navigation event — reset history so the imported state is the baseline.
         historyReset({
           waypoints: res.waypoints,
-          preset: snapshotRef.current.preset,
           profile: snapshotRef.current.profile,
           plannerMode: "point_to_point",
           targetDistanceKm: snapshotRef.current.targetDistanceKm,
@@ -946,8 +932,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           start: startWp.position,
           targetDistanceKm,
           directionBias: directionBias !== "any" ? directionBias : undefined,
-          preset,
-          advancedOverrides: profile,
+          profile,
           seed: nextSeed,
         });
 
@@ -957,7 +942,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         loadedResultRef.current = res;
         setWaypoints(gw);
         setResultOverride(res);
-        setLoadBaseline({ waypoints: gw, preset, profile });
+        setLoadBaseline({ waypoints: gw, profile });
         setRouteModified(false);
         setPlanningMetadata({
           mode: "round_trip",
@@ -966,7 +951,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         });
         historyPush({
           waypoints: gw,
-          preset,
           profile,
           plannerMode,
           targetDistanceKm,
@@ -977,16 +961,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         setIsGenerating(false);
       }
     },
-    [
-      waypoints,
-      roundTripSeed,
-      targetDistanceKm,
-      directionBias,
-      preset,
-      profile,
-      plannerMode,
-      historyPush,
-    ],
+    [waypoints, roundTripSeed, targetDistanceKm, directionBias, profile, plannerMode, historyPush],
   );
 
   const handleMenuAddWaypoint = useCallback(
@@ -1191,14 +1166,6 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       />
       <RoutePanel
         waypoints={waypoints}
-        preset={preset}
-        onPresetChange={(p) => {
-          const newProfile = PRESET_DEFAULTS[p];
-          setPreset(p);
-          setProfile(newProfile);
-          historyPush(buildSnapshot({ preset: p, profile: newProfile }));
-        }}
-        isCustom={profile !== PRESET_DEFAULTS[preset]}
         profile={profile}
         onProfileChange={setProfile}
         onProfileCommit={commit}

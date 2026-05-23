@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { RouteResult } from "@routax/shared";
+import type { RouteResult, RoutingProfile } from "@routax/shared";
 import dotenv from "dotenv";
 import { runner } from "node-pg-migrate";
 import type { Pool } from "pg";
@@ -47,53 +47,95 @@ const EVENT_NAMES = [
   "session_started",
 ] as const;
 
-const ROUTE_DEFINITIONS = [
+const ROUTE_DEFINITIONS: Array<{
+  slug: string;
+  name: string;
+  start: { lat: number; lng: number };
+  end: { lat: number; lng: number };
+  profile: RoutingProfile;
+  planningMetadata?: { mode: "gpx_import"; sourceFilename: string; importedAt: string };
+}> = [
   {
     slug: "tampere-jyvaskyla",
     name: "Tampere → Jyväskylä",
     start: { lat: 61.498, lng: 23.76 },
     end: { lat: 62.243, lng: 25.747 },
-    preset: "quiet_country_roads" as const,
-    advancedOverrides: { avoidTraffic: 0.3, preferQuietSurfaces: 0.4, maxGradient: 15 },
+    profile: {
+      avoidTraffic: 0.3,
+      preferSmoothSurfaces: 0.2,
+      maxGradient: 15,
+      preferCycleways: 0.5,
+      minimiseClimbing: 0,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
   },
   {
     slug: "helsinki-round-trip",
     name: "Helsinki → Espoo round-trip",
     start: { lat: 60.169, lng: 24.938 },
     end: { lat: 60.205, lng: 24.656 },
-    preset: "fastest_direct" as const,
-    advancedOverrides: { avoidTraffic: 0.5, preferQuietSurfaces: 0.6, maxGradient: 10 },
+    profile: {
+      avoidTraffic: 0.5,
+      preferSmoothSurfaces: 0.8,
+      maxGradient: 10,
+      preferCycleways: 0.6,
+      minimiseClimbing: 0,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
   },
   {
     slug: "lappeenranta-joensuu",
     name: "Lappeenranta → Joensuu",
     start: { lat: 61.058, lng: 28.187 },
     end: { lat: 62.601, lng: 29.763 },
-    preset: "quiet_country_roads" as const,
-    advancedOverrides: { avoidTraffic: 0.2, preferQuietSurfaces: 0.8, maxGradient: 12 },
+    profile: {
+      avoidTraffic: 0.2,
+      preferSmoothSurfaces: 0.8,
+      maxGradient: 12,
+      preferCycleways: 0.4,
+      minimiseClimbing: 0,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
   },
   {
     slug: "tampere-city-loop",
     name: "Tampere city loop",
     start: { lat: 61.497, lng: 23.757 },
     end: { lat: 61.51, lng: 23.8 },
-    preset: "fastest_direct" as const,
-    advancedOverrides: { avoidTraffic: 0.6, preferQuietSurfaces: 0.7, maxGradient: 8 },
+    profile: {
+      avoidTraffic: 0.6,
+      preferSmoothSurfaces: 0.7,
+      maxGradient: 8,
+      preferCycleways: 0.6,
+      minimiseClimbing: 0,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
   },
   {
     slug: "tampere-hameenlinna",
     name: "Tampere → Hämeenlinna",
     start: { lat: 61.497, lng: 23.757 },
     end: { lat: 61.001, lng: 24.465 },
-    preset: "quiet_country_roads" as const,
-    advancedOverrides: { avoidTraffic: 0.4, preferQuietSurfaces: 0.5, maxGradient: 12 },
+    profile: {
+      avoidTraffic: 0.4,
+      preferSmoothSurfaces: 0.5,
+      maxGradient: 12,
+      preferCycleways: 0.5,
+      minimiseClimbing: 0,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
     planningMetadata: {
       mode: "gpx_import" as const,
       sourceFilename: "tampere-hameenlinna.gpx",
       importedAt: "2026-04-01T10:00:00.000Z",
     },
   },
-] as const;
+];
 
 const FIXTURE_PATH = path.join(__dirname, "seed-fixtures/routes.json");
 const MIGRATIONS_DIR = path.join(__dirname, "../migrations");
@@ -245,8 +287,7 @@ export async function seedRoutes(
     if (mode === "live") {
       result = await container.routing.planRoute({
         waypoints: [def.start, def.end],
-        preset: def.preset,
-        advancedOverrides: def.advancedOverrides,
+        profile: def.profile,
       });
     } else {
       const f = fixtureMap?.get(def.slug);
@@ -254,8 +295,7 @@ export async function seedRoutes(
       result = f;
     }
 
-    const planningMetadata =
-      "planningMetadata" in def && def.planningMetadata ? def.planningMetadata : null;
+    const planningMetadata = def.planningMetadata ?? null;
 
     const waypoints = [
       { id: `${id}-start`, position: def.start, role: "start" as const },
@@ -297,9 +337,9 @@ export async function seedRoutes(
         id,
         SEED_USER_ID,
         def.name,
-        def.preset,
+        null,
         JSON.stringify(result.geometry),
-        JSON.stringify(def.advancedOverrides),
+        JSON.stringify(def.profile),
         Math.round(result.distance),
         Math.round(result.duration),
         Math.round(result.ascent),
@@ -324,8 +364,7 @@ async function writeFixtures(container: Container): Promise<void> {
     console.log(`  planning ${def.slug}...`);
     const result = await container.routing.planRoute({
       waypoints: [def.start, def.end],
-      preset: def.preset,
-      advancedOverrides: def.advancedOverrides,
+      profile: def.profile,
     });
     routes.push({ slug: def.slug, name: def.name, result });
   }

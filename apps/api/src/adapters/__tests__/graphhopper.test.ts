@@ -10,12 +10,22 @@ import {
   stitchRouteLegs,
 } from "../GraphhopperRoutingProvider.js";
 
+const BASE_PROFILE = {
+  avoidTraffic: 0,
+  preferCycleways: 0,
+  preferSmoothSurfaces: 0,
+  minimiseClimbing: 0,
+  maxGradient: 20,
+  allowFerries: false,
+  allowWaterCrossings: false,
+};
+
 const BASE_REQUEST = {
   waypoints: [
     { lat: 60.1699, lng: 25.0097 },
     { lat: 60.1791, lng: 24.9506 },
   ],
-  preset: "fastest_direct" as const,
+  profile: BASE_PROFILE,
 };
 
 function mockFetchOk(paths: unknown[]) {
@@ -53,7 +63,7 @@ describe("GraphhopperRoutingProvider", () => {
             { lat: 61.498, lng: 23.76 },
             { lat: 62.243, lng: 25.747 },
           ],
-          preset: "maximum_climbing",
+          profile: { ...BASE_PROFILE, minimiseClimbing: 0 },
         });
 
         expect(result.ascent).toBeGreaterThan(200);
@@ -293,7 +303,7 @@ describe("GraphhopperRoutingProvider", () => {
             { lat: 60.1, lng: 24.9 },
             { lat: 60.2, lng: 24.8 },
           ],
-          preset: "fastest_direct",
+          profile: BASE_PROFILE,
         }),
       ).rejects.toThrow("Leg 2→3 is unroutable");
     });
@@ -581,7 +591,6 @@ describe("GraphhopperRoutingProvider", () => {
       minimiseClimbing: 0,
       allowFerries: false,
       allowWaterCrossings: false,
-      maxTrailDifficulty: 6,
     };
 
     it("zero baseline: all-zero sliders emit no road-class, surface, or slope preference rules", () => {
@@ -825,9 +834,8 @@ describe("GraphhopperRoutingProvider", () => {
       expect(hasMtbCap).toBe(false);
     });
 
-    it("never emits mtb_rating rule regardless of maxTrailDifficulty value", () => {
-      // Trail difficulty control removed in task 29; mtb_rating cap rule is gone.
-      const model = buildCustomModel({ ...baseProfile, maxTrailDifficulty: 2 }) as {
+    it("never emits an mtb_rating rule (trail difficulty control removed in task 29)", () => {
+      const model = buildCustomModel(baseProfile) as {
         priority: Array<{ if?: string }>;
       };
       const rule = model.priority.find((r) => (r.if ?? "").startsWith("mtb_rating >"));
@@ -842,7 +850,7 @@ const ROUND_TRIP_REQUEST = {
   mode: "round_trip" as const,
   start: { lat: 60.1699, lng: 25.0097 },
   targetDistanceKm: 30,
-  preset: "fastest_direct" as const,
+  profile: BASE_PROFILE,
 };
 
 function makeRoundTripPath(coordCount = 100) {

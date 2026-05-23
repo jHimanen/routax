@@ -3,12 +3,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../app.js";
 import type { Container } from "../../container.js";
 
+const ROUTE_PROFILE = {
+  avoidTraffic: 0,
+  preferCycleways: 0,
+  preferSmoothSurfaces: 0,
+  minimiseClimbing: 0,
+  maxGradient: 20,
+  allowFerries: false,
+  allowWaterCrossings: false,
+};
+
 const VALID_BODY = {
   waypoints: [
     { lat: 60.1699, lng: 25.0097 },
     { lat: 60.1791, lng: 24.9506 },
   ],
-  preset: "fastest_direct",
+  profile: ROUTE_PROFILE,
 };
 
 const STUB_RESULT: RouteResult = {
@@ -159,7 +169,7 @@ describe("POST /route — round_trip mode", () => {
         mode: "round_trip",
         start: { lat: 60.1699, lng: 25.0097 },
         targetDistanceKm: 30,
-        preset: "fastest_direct",
+        profile: ROUTE_PROFILE,
       },
     });
 
@@ -181,7 +191,7 @@ describe("POST /route — round_trip mode", () => {
         mode: "round_trip",
         start: { lat: 60.1699, lng: 25.0097 },
         targetDistanceKm: 30,
-        preset: "fastest_direct",
+        profile: ROUTE_PROFILE,
       },
     });
 

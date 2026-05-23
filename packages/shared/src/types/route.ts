@@ -17,25 +17,30 @@ export const WaypointSchema = z.object({
 
 export type Waypoint = z.infer<typeof WaypointSchema>;
 
-export const RouteProfilePresetSchema = z.enum([
-  "quiet_country_roads",
-  "fastest_direct",
-  "maximum_climbing",
-  "avoid_gravel",
-]);
-export type RouteProfilePreset = z.infer<typeof RouteProfilePresetSchema>;
-
-export const RoutingProfileSchema = z.object({
-  avoidTraffic: z.number().min(0).max(1),
-  preferSmoothSurfaces: z.number().min(0).max(1).default(0),
-  maxGradient: z.number().min(0).max(20),
-  preferCycleways: z.number().min(0).max(1).default(0),
-  minimiseClimbing: z.number().min(0).max(1).default(0),
-  allowFerries: z.boolean().default(false),
-  allowWaterCrossings: z.boolean().default(false),
-  // 0–6 mirrors OSM mtb:scale; 6 = no cap (rule `mtb_rating > 6` never fires on real data)
-  maxTrailDifficulty: z.number().min(0).max(6).default(6),
-});
+export const RoutingProfileSchema = z
+  .object({
+    avoidTraffic: z.number().min(0).max(1),
+    preferSmoothSurfaces: z.number().min(0).max(1).default(0),
+    maxGradient: z.number().min(0).max(20),
+    preferCycleways: z.number().min(0).max(1).default(0),
+    minimiseClimbing: z.number().min(0).max(1).default(0),
+    allowFerries: z.boolean().default(false),
+    allowWaterCrossings: z.boolean().default(false),
+    // Removed fields from old JSONB profiles — silently stripped by Zod's strip default.
+    preferQuietSurfaces: z.number().optional(),
+    preferLargerRoads: z.number().optional(),
+    preferCycleNetworks: z.number().optional(),
+    maxTrailDifficulty: z.number().optional(),
+  })
+  .transform(
+    ({
+      preferQuietSurfaces: _pqs,
+      preferLargerRoads: _plr,
+      preferCycleNetworks: _pcn,
+      maxTrailDifficulty: _mtd,
+      ...rest
+    }) => rest,
+  );
 
 export interface RoutingProfile {
   /** 0 = ignore, 1 = strongly avoid high-traffic roads; also rewards quiet alternatives (cycleways, tracks, living streets). */
@@ -46,14 +51,12 @@ export interface RoutingProfile {
   maxGradient: number;
   /** 0 = ignore; 1 = strongly prefer dedicated cycling infrastructure. Separate cycleways rewarded more than bike lanes on roads. */
   preferCycleways: number;
-  /** 0 = no effect; 1 = strongly trade route length for reduced elevation gain. Uses slope-band penalties + lower distance_influence. average_slope is unsigned so this minimises total hilliness (ascent + descent), which is acceptable for long-distance riders. */
+  /** 0 = no effect; 1 = strongly trade route length for reduced elevation gain. Uses slope-band penalties + lower distance_influence. average_slope is unsigned so this minimises total hilliness (ascent + descent), acceptable for long-distance riders. */
   minimiseClimbing: number;
   /** When true, ferry edges are routable. Default false. */
   allowFerries: boolean;
   /** When true, ford crossings are routable. Default false. */
   allowWaterCrossings: boolean;
-  /** Cap on mtb_rating (0–6). Default 6 = no cap. */
-  maxTrailDifficulty: number;
 }
 
 export const SurfaceClassSchema = z.enum([
@@ -76,8 +79,7 @@ export const RouteWaypointSchema = z.object({
 export const PointToPointRequestSchema = z.object({
   mode: z.literal("point_to_point").optional().default("point_to_point"),
   waypoints: z.array(RouteWaypointSchema).min(2),
-  preset: RouteProfilePresetSchema,
-  advancedOverrides: RoutingProfileSchema.partial().optional(),
+  profile: RoutingProfileSchema,
 });
 
 export type PointToPointRequest = z.infer<typeof PointToPointRequestSchema>;
@@ -87,8 +89,7 @@ export const RoundTripRequestSchema = z.object({
   start: z.object({ lat: z.number(), lng: z.number() }),
   targetDistanceKm: z.number().min(5).max(500),
   directionBias: z.enum(["any", "north", "east", "south", "west"]).optional(),
-  preset: RouteProfilePresetSchema,
-  advancedOverrides: RoutingProfileSchema.partial().optional(),
+  profile: RoutingProfileSchema,
   seed: z.number().int().min(0).optional(),
 });
 
@@ -161,7 +162,7 @@ export const SavedRouteSchema = z.object({
   id: z.string().uuid(),
   userId: z.string(),
   name: z.string().min(1),
-  preset: RouteProfilePresetSchema,
+  preset: z.string().optional(),
   geometry: RouteGeometrySchema,
   profile: RoutingProfileSchema,
   distance: z.number().int().nonnegative(),
@@ -179,7 +180,7 @@ export const SavedRouteSchema = z.object({
 
 export const CreateRouteRequestSchema = z.object({
   name: z.string().min(1),
-  preset: RouteProfilePresetSchema,
+  preset: z.string().optional(),
   profile: RoutingProfileSchema,
   geometry: RouteGeometrySchema,
   distance: z.number().int().nonnegative(),

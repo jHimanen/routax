@@ -1,23 +1,15 @@
-import {
-  CreateRouteRequestSchema,
-  RouteProfilePresetSchema,
-  RouteRequestSchema,
-  RoutingProfileSchema,
-} from "@routax/shared";
+import { CreateRouteRequestSchema, RouteRequestSchema, RoutingProfileSchema } from "@routax/shared";
 import { describe, expect, it } from "vitest";
 
-describe("RouteProfilePresetSchema", () => {
-  it("accepts all four named presets", () => {
-    for (const p of ["fastest_direct", "quiet_country_roads", "maximum_climbing", "avoid_gravel"]) {
-      expect(() => RouteProfilePresetSchema.parse(p)).not.toThrow();
-    }
-  });
-
-  it("rejects unknown preset slugs", () => {
-    expect(() => RouteProfilePresetSchema.parse("gravel_hero")).toThrow();
-    expect(() => RouteProfilePresetSchema.parse("")).toThrow();
-  });
-});
+const baseProfile = {
+  avoidTraffic: 0,
+  preferCycleways: 0,
+  preferSmoothSurfaces: 0,
+  minimiseClimbing: 0,
+  maxGradient: 20,
+  allowFerries: false,
+  allowWaterCrossings: false,
+};
 
 describe("RouteRequestSchema", () => {
   const base = {
@@ -25,7 +17,7 @@ describe("RouteRequestSchema", () => {
       { lat: 60.17, lng: 25.01 },
       { lat: 60.18, lng: 24.95 },
     ],
-    preset: "fastest_direct",
+    profile: baseProfile,
   };
 
   it("accepts a valid two-waypoint request", () => {
@@ -45,12 +37,6 @@ describe("RouteRequestSchema", () => {
     ).not.toThrow();
   });
 
-  it("accepts a request with advancedOverrides", () => {
-    expect(() =>
-      RouteRequestSchema.parse({ ...base, advancedOverrides: { avoidTraffic: 0.5 } }),
-    ).not.toThrow();
-  });
-
   it("rejects fewer than 2 waypoints", () => {
     expect(() =>
       RouteRequestSchema.parse({ ...base, waypoints: [{ lat: 60.17, lng: 25.01 }] }),
@@ -58,18 +44,14 @@ describe("RouteRequestSchema", () => {
     expect(() => RouteRequestSchema.parse({ ...base, waypoints: [] })).toThrow();
   });
 
-  it("rejects a request with an unknown preset", () => {
-    expect(() => RouteRequestSchema.parse({ ...base, preset: "turbo_mode" })).toThrow();
+  it("rejects a request missing profile", () => {
+    const { profile: _, ...withoutProfile } = base;
+    expect(() => RouteRequestSchema.parse(withoutProfile)).toThrow();
   });
 
-  it("rejects a request missing preset", () => {
-    const { preset: _, ...withoutPreset } = base;
-    expect(() => RouteRequestSchema.parse(withoutPreset)).toThrow();
-  });
-
-  it("rejects advancedOverrides with out-of-range values", () => {
+  it("rejects profile with out-of-range avoidTraffic", () => {
     expect(() =>
-      RouteRequestSchema.parse({ ...base, advancedOverrides: { avoidTraffic: 2.0 } }),
+      RouteRequestSchema.parse({ ...base, profile: { ...baseProfile, avoidTraffic: 2.0 } }),
     ).toThrow();
   });
 });
@@ -77,8 +59,15 @@ describe("RouteRequestSchema", () => {
 describe("CreateRouteRequestSchema", () => {
   const base = {
     name: "Test Route",
-    preset: "quiet_country_roads",
-    profile: { avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 },
+    profile: {
+      avoidTraffic: 0.8,
+      preferCycleways: 0.6,
+      preferSmoothSurfaces: 0.9,
+      minimiseClimbing: 0,
+      maxGradient: 8,
+      allowFerries: false,
+      allowWaterCrossings: false,
+    },
     geometry: {
       type: "LineString",
       coordinates: [
@@ -93,8 +82,14 @@ describe("CreateRouteRequestSchema", () => {
     elevationProfile: [10, 20],
   };
 
-  it("accepts a valid create request without explicit waypoints", () => {
+  it("accepts a valid create request without preset", () => {
     expect(() => CreateRouteRequestSchema.parse(base)).not.toThrow();
+  });
+
+  it("accepts a create request with optional preset (old format back-compat)", () => {
+    expect(() =>
+      CreateRouteRequestSchema.parse({ ...base, preset: "quiet_country_roads" }),
+    ).not.toThrow();
   });
 
   it("accepts a create request with waypoints", () => {
@@ -108,11 +103,6 @@ describe("CreateRouteRequestSchema", () => {
       }),
     ).not.toThrow();
   });
-
-  it("rejects a create request missing preset", () => {
-    const { preset: _, ...withoutPreset } = base;
-    expect(() => CreateRouteRequestSchema.parse(withoutPreset)).toThrow();
-  });
 });
 
 describe("RoutingProfileSchema — backward compatibility", () => {
@@ -124,7 +114,6 @@ describe("RoutingProfileSchema — backward compatibility", () => {
     expect(parsed.minimiseClimbing).toBe(0);
     expect(parsed.allowFerries).toBe(false);
     expect(parsed.allowWaterCrossings).toBe(false);
-    expect(parsed.maxTrailDifficulty).toBe(6);
   });
 
   it("round-trips a fully-populated profile unchanged", () => {
@@ -136,7 +125,6 @@ describe("RoutingProfileSchema — backward compatibility", () => {
       minimiseClimbing: 0.4,
       allowFerries: true,
       allowWaterCrossings: true,
-      maxTrailDifficulty: 3,
     };
     expect(RoutingProfileSchema.parse(full)).toEqual(full);
   });
@@ -150,13 +138,12 @@ describe("RoutingProfileSchema — backward compatibility", () => {
       preferLargerRoads: 0.4,
       allowFerries: false,
       allowWaterCrossings: false,
-      maxTrailDifficulty: 3,
     };
     const result = RoutingProfileSchema.parse(old);
     expect("preferQuietSurfaces" in result).toBe(false);
     expect("preferLargerRoads" in result).toBe(false);
-    expect(result.preferSmoothSurfaces).toBe(0); // defaults to 0
-    expect(result.preferCycleways).toBe(0.8); // preserved
+    expect(result.preferSmoothSurfaces).toBe(0);
+    expect(result.preferCycleways).toBe(0.8);
   });
 
   it("silently drops preferCycleNetworks from an old JSONB profile", () => {
@@ -166,21 +153,23 @@ describe("RoutingProfileSchema — backward compatibility", () => {
       preferCycleNetworks: 0.8,
       allowFerries: false,
       allowWaterCrossings: false,
-      maxTrailDifficulty: 3,
     };
     const result = RoutingProfileSchema.parse(old);
     expect(result.preferCycleways).toBe(0);
     expect("preferCycleNetworks" in result).toBe(false);
   });
 
-  it("rejects maxTrailDifficulty outside 0–6", () => {
-    expect(() =>
-      RoutingProfileSchema.parse({
-        avoidTraffic: 0,
-        preferQuietSurfaces: 0,
-        maxGradient: 10,
-        maxTrailDifficulty: 7,
-      }),
-    ).toThrow();
+  it("silently drops maxTrailDifficulty from old JSONB profiles", () => {
+    const old = {
+      avoidTraffic: 0.5,
+      maxGradient: 10,
+      preferCycleways: 0.8,
+      allowFerries: false,
+      allowWaterCrossings: false,
+      maxTrailDifficulty: 3,
+    };
+    const result = RoutingProfileSchema.parse(old);
+    expect("maxTrailDifficulty" in result).toBe(false);
+    expect(result.minimiseClimbing).toBe(0);
   });
 });

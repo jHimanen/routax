@@ -1,4 +1,4 @@
-import type { RouteProfilePreset, RouteResult, RoutingProfile, Waypoint } from "@routax/shared";
+import type { RouteResult, RoutingProfile, Waypoint } from "@routax/shared";
 import { useEffect, useRef, useState } from "react";
 import { postRoute } from "../lib/api";
 
@@ -15,7 +15,6 @@ export interface UseRouteOptions {
 
 export function useRoute(
   waypoints: Waypoint[],
-  preset: RouteProfilePreset,
   profile: RoutingProfile,
   options: UseRouteOptions = { resultOverride: null },
 ): UseRouteResult {
@@ -63,8 +62,7 @@ export function useRoute(
           {
             mode: "point_to_point",
             waypoints: waypoints.map((w) => w.position),
-            preset,
-            advancedOverrides: profile,
+            profile,
           },
           controller.signal,
         );
@@ -85,7 +83,7 @@ export function useRoute(
         clearTimeout(timerRef.current);
       }
     };
-  }, [waypoints, preset, profile, resultOverride]);
+  }, [waypoints, profile, resultOverride]);
 
   const result = resultOverride ?? fetched;
   if (resultOverride) {

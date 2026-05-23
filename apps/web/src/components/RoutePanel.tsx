@@ -1,13 +1,11 @@
 "use client";
 
-import {
-  PRESET_METADATA,
-  type PlanningMetadata,
-  type RouteProfilePreset,
-  type RouteResult,
-  type RoutingProfile,
-  type SavedRoute,
-  type Waypoint,
+import type {
+  PlanningMetadata,
+  RouteResult,
+  RoutingProfile,
+  SavedRoute,
+  Waypoint,
 } from "@routax/shared";
 import { type ChangeEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { downloadPreviewGpx, listRoutes } from "../lib/api";
@@ -16,18 +14,8 @@ import { buildRouteUrl } from "../lib/url";
 import { ElevationProfile } from "./ElevationProfile";
 import { SurfaceLegend } from "./SurfaceLegend";
 
-const PRESET_ORDER: RouteProfilePreset[] = [
-  "fastest_direct",
-  "quiet_country_roads",
-  "maximum_climbing",
-  "avoid_gravel",
-];
-
 interface RoutePanelProps {
   waypoints: Waypoint[];
-  preset: RouteProfilePreset;
-  onPresetChange: (p: RouteProfilePreset) => void;
-  isCustom: boolean;
   profile: RoutingProfile;
   onProfileChange: (p: RoutingProfile) => void;
   /** Called when a slider drag ends or a toggle fires — push one history entry. */
@@ -113,9 +101,6 @@ type SavePhase = "none" | "form" | "saving" | "saved";
 
 export function RoutePanel({
   waypoints,
-  preset,
-  onPresetChange,
-  isCustom,
   profile,
   onProfileChange,
   onProfileCommit,
@@ -548,9 +533,7 @@ export function RoutePanel({
       )}
 
       {savedReadMode && !routeModified && (
-        <p className="route-panel-saved-hint">
-          Saved route — change preset or adjust sliders to reroute
-        </p>
+        <p className="route-panel-saved-hint">Saved route — adjust sliders to reroute</p>
       )}
       {routeModified && <p className="route-panel-modified">Modified</p>}
 
@@ -629,22 +612,6 @@ export function RoutePanel({
         </button>
       )}
 
-      <div className="route-panel-presets">
-        {PRESET_ORDER.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={`route-panel-preset${preset === p ? " route-panel-preset--active" : ""}`}
-            disabled={deepLinkLoading}
-            onClick={() => onPresetChange(p)}
-            title={PRESET_METADATA[p].description}
-          >
-            {PRESET_METADATA[p].label}
-          </button>
-        ))}
-        {isCustom && <span className="route-panel-preset-custom">Customised</span>}
-      </div>
-
       <details className="route-panel-advanced">
         <summary className="route-panel-advanced-summary">Advanced</summary>
 
@@ -700,6 +667,21 @@ export function RoutePanel({
             />
           </label>
           <label className="route-panel-label">
+            <span>Minimise climbing</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={profile.minimiseClimbing}
+              disabled={deepLinkLoading}
+              onChange={(e) =>
+                onProfileChange({ ...profile, minimiseClimbing: Number(e.target.value) })
+              }
+              onPointerUp={onProfileCommit}
+            />
+          </label>
+          <label className="route-panel-label">
             <span>Max gradient ({profile.maxGradient}%)</span>
             <input
               type="range"
@@ -709,28 +691,6 @@ export function RoutePanel({
               value={profile.maxGradient}
               disabled={deepLinkLoading}
               onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
-              onPointerUp={onProfileCommit}
-            />
-          </label>
-        </div>
-
-        <div className="route-panel-sliders">
-          <p className="route-panel-advanced-group-label">Trail difficulty</p>
-          <label className="route-panel-label">
-            <span>
-              Max trail difficulty (
-              {profile.maxTrailDifficulty === 6 ? "any" : profile.maxTrailDifficulty})
-            </span>
-            <input
-              type="range"
-              min="0"
-              max="6"
-              step="1"
-              value={profile.maxTrailDifficulty}
-              disabled={deepLinkLoading}
-              onChange={(e) =>
-                onProfileChange({ ...profile, maxTrailDifficulty: Number(e.target.value) })
-              }
               onPointerUp={onProfileCommit}
             />
           </label>

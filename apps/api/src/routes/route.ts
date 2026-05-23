@@ -20,7 +20,6 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
           ...(isRoundTrip
             ? { targetDistanceKm: body.targetDistanceKm }
             : { waypoint_count: body.waypoints.length }),
-          preset: body.preset,
         },
         "route request received",
       );
@@ -56,8 +55,6 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
         message: "route planned",
         data: {
           mode: body.mode,
-          preset: body.preset,
-          advancedOverrides: body.advancedOverrides ?? null,
           distanceM: result.distance,
           ascent: result.ascent,
         },
@@ -69,7 +66,6 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
           name: (body.seed ?? 0) > 0 ? "round_trip_regenerated" : "round_trip_generated",
           userId: user.id,
           properties: {
-            preset: body.preset,
             targetDistanceKm: body.targetDistanceKm,
             seed: body.seed ?? 0,
             distance_m: result.distance,
@@ -80,8 +76,6 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
           name: "route_planned",
           userId: user.id,
           properties: {
-            preset: body.preset,
-            has_advanced_overrides: body.advancedOverrides !== undefined,
             waypoint_count: body.waypoints.length,
             distance_m: result.distance,
             ascent_m: result.ascent,
