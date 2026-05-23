@@ -1,4 +1,4 @@
-import type { RouteResult } from "@routax/shared";
+import { PRESET_DEFAULTS, type RouteResult } from "@routax/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GraphhopperRoutingProvider,
@@ -575,14 +575,26 @@ describe("GraphhopperRoutingProvider", () => {
   describe("buildCustomModel", () => {
     const baseProfile = {
       avoidTraffic: 0,
-      preferQuietSurfaces: 0,
+      preferSmoothSurfaces: 0,
       maxGradient: 20,
       preferCycleways: 0,
-      preferLargerRoads: 0,
       allowFerries: false,
       allowWaterCrossings: false,
       maxTrailDifficulty: 6,
     };
+
+    it("zero baseline: all-zero sliders emit no road-class or surface preference rules", () => {
+      const model = buildCustomModel(baseProfile, "fastest_direct") as {
+        priority: Array<{ if?: string; else_if?: string }>;
+      };
+      const condition = (r: { if?: string; else_if?: string }) => r.if ?? r.else_if ?? "";
+      const hasRoadClass = model.priority.some((r) => condition(r).includes("road_class"));
+      const hasBikePriority = model.priority.some((r) => condition(r).includes("bike_priority"));
+      const hasSurface = model.priority.some((r) => condition(r).includes("surface =="));
+      expect(hasRoadClass).toBe(false);
+      expect(hasBikePriority).toBe(false);
+      expect(hasSurface).toBe(false);
+    });
 
     it("fastest_direct produces a minimal model with low distance_influence", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
@@ -590,56 +602,45 @@ describe("GraphhopperRoutingProvider", () => {
         distance_influence: number;
       };
       expect(model.distance_influence).toBe(60);
-      // No surface penalty rules — priority list has only the base slider rules.
       expect(
         (model.priority as Array<{ if?: string }>).some((r) => r.if?.includes("surface")),
       ).toBe(false);
     });
 
-    it("avoid_gravel appends surface penalty rules not present in fastest_direct", () => {
-      const directModel = buildCustomModel(baseProfile, "fastest_direct") as {
+    it("avoid_gravel (with preferSmoothSurfaces: 0.9) emits a paved-surface reward rule", () => {
+      const avoidGravelProfile = PRESET_DEFAULTS["avoid_gravel"];
+      const model = buildCustomModel(avoidGravelProfile, "avoid_gravel") as {
         priority: Array<{ if?: string }>;
       };
-      const gravelModel = buildCustomModel(baseProfile, "avoid_gravel") as {
-        priority: Array<{ if?: string }>;
-      };
-      const directHasSurface = directModel.priority.some((r) => r.if?.includes("surface"));
-      const gravelHasSurface = gravelModel.priority.some((r) => r.if?.includes("surface"));
-      expect(directHasSurface).toBe(false);
-      expect(gravelHasSurface).toBe(true);
-    });
-
-    it("avoid_gravel penalises GRAVEL harder than COMPACTED", () => {
-      const model = buildCustomModel(baseProfile, "avoid_gravel") as {
-        priority: Array<{ if?: string; multiply_by?: string }>;
-      };
-      const gravelRule = model.priority.find((r) => r.if?.includes("GRAVEL"));
-      const compactedRule = model.priority.find((r) => r.if?.includes("COMPACTED"));
-      expect(gravelRule).toBeDefined();
-      expect(compactedRule).toBeDefined();
-      expect(Number(gravelRule?.multiply_by)).toBeLessThan(Number(compactedRule?.multiply_by));
+      const surfaceRule = model.priority.find((r) => r.if?.includes("ASPHALT"));
+      expect(surfaceRule).toBeDefined();
+      // Hard gravel/unpaved penalties are gone — replaced by the reward model.
+      const hasGravelPenalty = model.priority.some(
+        (r) => r.if?.includes("GRAVEL") || r.if?.includes("UNPAVED") || r.if?.includes("COMPACTED"),
+      );
+      expect(hasGravelPenalty).toBe(false);
     });
 
     it("quiet_country_roads uses higher distance_influence than fastest_direct", () => {
       const fastModel = buildCustomModel(
-        { ...baseProfile, avoidTraffic: 0, preferQuietSurfaces: 0, maxGradient: 20 },
+        { ...baseProfile, avoidTraffic: 0, maxGradient: 20 },
         "fastest_direct",
       ) as { distance_influence: number };
       const quietModel = buildCustomModel(
-        { ...baseProfile, avoidTraffic: 0.8, preferQuietSurfaces: 0.9, maxGradient: 8 },
+        { ...baseProfile, avoidTraffic: 0.7, maxGradient: 10 },
         "quiet_country_roads",
       ) as { distance_influence: number };
       expect(quietModel.distance_influence).toBeGreaterThan(fastModel.distance_influence);
     });
 
-    it("each preset produces a distinct serialisation", () => {
+    it("each preset produces a distinct serialisation using its own defaults", () => {
       const presets = [
         "fastest_direct",
         "quiet_country_roads",
         "maximum_climbing",
         "avoid_gravel",
       ] as const;
-      const models = presets.map((p) => JSON.stringify(buildCustomModel(baseProfile, p)));
+      const models = presets.map((p) => JSON.stringify(buildCustomModel(PRESET_DEFAULTS[p], p)));
       const unique = new Set(models);
       expect(unique.size).toBe(presets.length);
     });
@@ -698,30 +699,68 @@ describe("GraphhopperRoutingProvider", () => {
       expect(hasWater).toBe(false);
     });
 
-    it("emits cycleway boost when preferCycleways > 0", () => {
-      const model = buildCustomModel({ ...baseProfile, preferCycleways: 1 }, "fastest_direct") as {
-        priority: Array<{ if?: string; multiply_by?: string }>;
+    it("avoidTraffic > 0: emits PRIMARY penalty, SECONDARY else_if penalty, and quiet reward", () => {
+      const model = buildCustomModel({ ...baseProfile, avoidTraffic: 1 }, "fastest_direct") as {
+        priority: Array<{ if?: string; else_if?: string; multiply_by?: string }>;
       };
-      // Block 1: road_class == CYCLEWAY (factor 1.2 → 2.20× at cw=1)
+      const primaryRule = model.priority.find((r) => r.if === "road_class == PRIMARY");
+      expect(primaryRule).toBeDefined();
+      expect(primaryRule?.multiply_by).toBe("0.10"); // (1 - 1 * 0.9)
+
+      const secondaryRule = model.priority.find(
+        (r) => r.else_if === "road_class == SECONDARY",
+      );
+      expect(secondaryRule).toBeDefined();
+      expect(secondaryRule?.multiply_by).toBe("0.50"); // (1 - 1 * 0.5)
+
+      const quietRule = model.priority.find(
+        (r) =>
+          r.if ===
+          "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
+      );
+      expect(quietRule).toBeDefined();
+      expect(quietRule?.multiply_by).toBe("1.60"); // (1 + 1 * 0.6)
+    });
+
+    it("avoidTraffic = 0: emits no road_class rules", () => {
+      const model = buildCustomModel(baseProfile, "fastest_direct") as {
+        priority: Array<{ if?: string; else_if?: string }>;
+      };
+      const hasRoadClass = model.priority.some(
+        (r) => (r.if ?? r.else_if ?? "").includes("road_class"),
+      );
+      expect(hasRoadClass).toBe(false);
+    });
+
+    it("emits cycleway boost when preferCycleways > 0, bike_priority rule is else_if", () => {
+      const model = buildCustomModel({ ...baseProfile, preferCycleways: 1 }, "fastest_direct") as {
+        priority: Array<{ if?: string; else_if?: string; multiply_by?: string }>;
+      };
+      // road_class == CYCLEWAY is a fresh `if` with stronger factor (1.2 → 2.20× at cw=1)
       const cwRule = model.priority.find((r) => r.if === "road_class == CYCLEWAY");
       expect(cwRule).toBeDefined();
       expect(cwRule?.multiply_by).toBe("2.20");
-      // Block 2: bike_priority >= 1.4 (designated cycleways; GH 11.0 max is 1.5)
-      // factor 0.8 → 1.80× at cw=1
-      const bpRule = model.priority.find((r) => r.if === "bike_priority >= 1.4");
+
+      // bike_priority >= 1.4 is an `else_if` (lighter factor, 0.5 → 1.50× at cw=1)
+      // A segment that is both road_class==CYCLEWAY and bike_priority>=1.4 gets only
+      // the stronger CYCLEWAY factor — no double-stacking.
+      const bpRule = model.priority.find((r) => r.else_if === "bike_priority >= 1.4");
       expect(bpRule).toBeDefined();
-      expect(bpRule?.multiply_by).toBe("1.80");
+      expect(bpRule?.multiply_by).toBe("1.50");
+
       // Old bike_network rules must not appear
       const networkRule = model.priority.find((r) => r.if?.includes("bike_network"));
       expect(networkRule).toBeUndefined();
     });
 
-    it("omits cycleway and bike_priority boosts when preferCycleways: 0", () => {
+    it("omits cycleway and bike_priority rules when preferCycleways: 0", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
-        priority: Array<{ if?: string }>;
+        priority: Array<{ if?: string; else_if?: string }>;
       };
       expect(model.priority.find((r) => r.if === "road_class == CYCLEWAY")).toBeUndefined();
-      expect(model.priority.find((r) => r.if === "bike_priority >= 1.4")).toBeUndefined();
+      expect(
+        model.priority.find((r) => r.else_if === "bike_priority >= 1.4"),
+      ).toBeUndefined();
     });
 
     it("emits no bike_network rules for any preset", () => {
@@ -739,29 +778,47 @@ describe("GraphhopperRoutingProvider", () => {
       }
     });
 
-    it("emits larger-roads boost as a fresh if block when preferLargerRoads > 0", () => {
+    it("emits paved-surface reward when preferSmoothSurfaces > 0", () => {
       const model = buildCustomModel(
-        { ...baseProfile, preferLargerRoads: 1 },
+        { ...baseProfile, preferSmoothSurfaces: 1 },
         "fastest_direct",
-      ) as { priority: Array<{ if?: string; else_if?: string; multiply_by?: string }> };
+      ) as { priority: Array<{ if?: string; multiply_by?: string }> };
       const rule = model.priority.find(
-        (r) => r.if === "road_class == SECONDARY || road_class == TERTIARY",
+        (r) => r.if === "surface == ASPHALT || surface == CONCRETE || surface == PAVED",
       );
       expect(rule).toBeDefined();
-      // Must be a fresh `if`, not an `else_if` chained off the avoidTraffic block.
-      expect((rule as { else_if?: string }).else_if).toBeUndefined();
-      // multiply_by = (1 + 1 * 0.6).toFixed(2) = "1.60"
-      expect(rule?.multiply_by).toBe("1.60");
+      expect(rule?.multiply_by).toBe("1.80"); // (1 + 1 * 0.8)
     });
 
-    it("omits larger-roads boost when preferLargerRoads: 0", () => {
+    it("omits smooth-surfaces rule when preferSmoothSurfaces: 0", () => {
       const model = buildCustomModel(baseProfile, "fastest_direct") as {
         priority: Array<{ if?: string }>;
       };
-      const rule = model.priority.find(
-        (r) => r.if === "road_class == SECONDARY || road_class == TERTIARY",
-      );
+      const rule = model.priority.find((r) => r.if?.includes("ASPHALT"));
       expect(rule).toBeUndefined();
+    });
+
+    it("emits no preferQuietSurfaces or preferLargerRoads rules for any preset", () => {
+      for (const preset of [
+        "fastest_direct",
+        "quiet_country_roads",
+        "maximum_climbing",
+        "avoid_gravel",
+      ] as const) {
+        const model = buildCustomModel(PRESET_DEFAULTS[preset], preset) as {
+          priority: Array<{ if?: string; else_if?: string }>;
+        };
+        const hasLargerRoads = model.priority.some((r) =>
+          (r.if ?? "").includes("road_class == SECONDARY || road_class == TERTIARY"),
+        );
+        const hasGravelPenalty = model.priority.some((r) =>
+          (r.if ?? "").includes("GRAVEL") ||
+          (r.if ?? "").includes("UNPAVED") ||
+          (r.if ?? "").includes("COMPACTED"),
+        );
+        expect(hasLargerRoads, `${preset} should not emit larger-roads rule`).toBe(false);
+        expect(hasGravelPenalty, `${preset} should not emit hard gravel penalty`).toBe(false);
+      }
     });
 
     it("emits MTB cap rule when maxTrailDifficulty < 6", () => {

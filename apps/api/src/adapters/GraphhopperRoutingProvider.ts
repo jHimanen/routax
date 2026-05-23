@@ -160,24 +160,12 @@ const DISTANCE_INFLUENCE: Record<RouteProfilePreset, number> = {
 
 export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePreset): unknown {
   const t = profile.avoidTraffic;
-  const q = profile.preferQuietSurfaces;
-  const g = profile.maxGradient;
   const cw = profile.preferCycleways;
-  const l = profile.preferLargerRoads;
+  const g = profile.maxGradient;
+  const s = profile.preferSmoothSurfaces;
 
+  // Zero baseline: only the gradient hard-cap fires at all-zero sliders.
   const priority: unknown[] = [
-    {
-      if: "road_class == PRIMARY",
-      multiply_by: (1 - t * 0.9).toFixed(2),
-    },
-    {
-      else_if: "road_class == SECONDARY",
-      multiply_by: (1 - t * 0.5).toFixed(2),
-    },
-    {
-      if: "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
-      multiply_by: (1 + q * 0.8).toFixed(2),
-    },
     {
       if: `average_slope > ${g}`,
       multiply_by: "0.01",
@@ -193,71 +181,48 @@ export function buildCustomModel(profile: RoutingProfile, preset: RouteProfilePr
     priority.push({ if: "road_environment == FORD", multiply_by: "0" });
   }
 
-  // Cycleway preference: two independent `if` blocks (not else_if) so each fires
-  // regardless of the avoidTraffic chain above.
-  //
-  // Block 1 (road_class == CYCLEWAY): boosts all highway=cycleway regardless of
-  //   designation tagging. Factor 1.2 → mid-slider (cw=0.5) = 1.60×, full = 2.20×.
-  //
-  // Block 2 (bike_priority >= 1.4): targets segments the GH bike encoder marks as
-  //   highest-priority cycling infrastructure. bike_priority is a numeric EV with
-  //   4-bit storage in GH 11.0 — max stored value is 1.5 (VehiclePriority.PREFER).
-  //   Values: SLIGHT_PREFER=1.2, PREFER=1.5; VERY_NICE (3.0) and BEST (10.0) are
-  //   clamped to 1.5. Empirically, only road_class==cycleway segments reach >=1.4;
-  //   the subset that do (bp=1.5) correspond to bicycle=designated cycleways. Factor
-  //   0.8 → mid-slider = 1.40×, full = 1.80×.
-  //
-  // Combined effect at cw=1: a highway=cycleway + bicycle=designated way gets
-  //   2.20 × 1.80 = 3.96× total. Intentional — maximally designated infrastructure
-  //   deserves the strongest pull. Undesignated cycleways (bp<1.4) get only 2.20×.
-  //
-  // Limitation: highway=path + bicycle=designated segments max out at bp=1.2 in
-  //   Finnish OSM data, so block 2 does NOT extend to non-cycleway designated paths.
-  //   That coverage requires a higher-resolution bike_priority EV (GH 12+).
-  if (cw > 0) {
-    priority.push({
-      if: "road_class == CYCLEWAY",
-      multiply_by: (1 + cw * 1.2).toFixed(2),
-    });
-    priority.push({
-      if: "bike_priority >= 1.4",
-      multiply_by: (1 + cw * 0.8).toFixed(2),
-    });
+  // Avoid traffic: penalise busy roads and reward quiet alternatives.
+  // Both sub-blocks are guarded so nothing fires at t=0 (zero baseline).
+  // The reward block is a fresh `if` (not else_if) so it fires independently
+  // of the PRIMARY/SECONDARY chain.
+  if (t > 0) {
+    priority.push(
+      { if: "road_class == PRIMARY", multiply_by: (1 - t * 0.9).toFixed(2) },
+      { else_if: "road_class == SECONDARY", multiply_by: (1 - t * 0.5).toFixed(2) },
+      {
+        if: "road_class == CYCLEWAY || road_class == TRACK || road_class == LIVING_STREET || road_class == PATH",
+        multiply_by: (1 + t * 0.6).toFixed(2),
+      },
+    );
   }
 
-  // Larger-roads preference: fresh `if` block (not else_if) so it fires independently
-  // of the avoidTraffic PRIMARY/SECONDARY chain above. Never boosts PRIMARY/TRUNK/MOTORWAY.
-  if (l > 0) {
+  // Prefer cycleways: `if`/`else_if` so a segment that is both road_class==CYCLEWAY
+  // and bike_priority>=1.4 (a designated separate cycleway) gets only the stronger
+  // CYCLEWAY factor — no double-stacking.
+  //
+  // bike_priority is a numeric EV (4-bit storage in GH 11.0; max 1.5).
+  // SLIGHT_PREFER=1.2, PREFER=1.5. In Finnish OSM data only road_class==CYCLEWAY
+  // segments reliably reach >=1.4; non-cycleway designated paths max at 1.2.
+  if (cw > 0) {
+    priority.push(
+      { if: "road_class == CYCLEWAY", multiply_by: (1 + cw * 1.2).toFixed(2) },
+      { else_if: "bike_priority >= 1.4", multiply_by: (1 + cw * 0.5).toFixed(2) },
+    );
+  }
+
+  // Prefer smooth surfaces: reward paved segments. At s=0 nothing fires (zero baseline).
+  // Replaces the old avoid_gravel preset hard penalties with a softer reward model.
+  // Verify ASPHALT/CONCRETE/PAVED names against GET /info before merging.
+  if (s > 0) {
     priority.push({
-      if: "road_class == SECONDARY || road_class == TERTIARY",
-      multiply_by: (1 + l * 0.6).toFixed(2),
+      if: "surface == ASPHALT || surface == CONCRETE || surface == PAVED",
+      multiply_by: (1 + s * 0.8).toFixed(2),
     });
   }
 
   // MTB cap: hard exclusion. Default 6 means `mtb_rating > 6` never fires on real OSM data.
   if (profile.maxTrailDifficulty < 6) {
     priority.push({ if: `mtb_rating > ${profile.maxTrailDifficulty}`, multiply_by: "0" });
-  }
-
-  // Penalise known unpaved surfaces; leave unknown unpenalised (OSM coverage is incomplete).
-  if (preset === "avoid_gravel") {
-    // Only use Surface enum values that GH exposes in its custom-model DSL.
-    // OSM tags like earth/ground/mud/fine_gravel are folded into other enum
-    // values during graph import and are not addressable by name here.
-    priority.push(
-      {
-        if: "surface == GRAVEL || surface == DIRT || surface == SAND",
-        multiply_by: "0.20",
-      },
-      {
-        if: "surface == UNPAVED",
-        multiply_by: "0.30",
-      },
-      {
-        if: "surface == COMPACTED",
-        multiply_by: "0.50",
-      },
-    );
   }
 
   return {
@@ -274,10 +239,9 @@ function resolveProfile(request: {
   const overrides = request.advancedOverrides ?? {};
   return {
     avoidTraffic: overrides.avoidTraffic ?? defaults.avoidTraffic,
-    preferQuietSurfaces: overrides.preferQuietSurfaces ?? defaults.preferQuietSurfaces,
+    preferSmoothSurfaces: overrides.preferSmoothSurfaces ?? defaults.preferSmoothSurfaces,
     maxGradient: overrides.maxGradient ?? defaults.maxGradient,
     preferCycleways: overrides.preferCycleways ?? defaults.preferCycleways,
-    preferLargerRoads: overrides.preferLargerRoads ?? defaults.preferLargerRoads,
     allowFerries: overrides.allowFerries ?? defaults.allowFerries,
     allowWaterCrossings: overrides.allowWaterCrossings ?? defaults.allowWaterCrossings,
     maxTrailDifficulty: overrides.maxTrailDifficulty ?? defaults.maxTrailDifficulty,

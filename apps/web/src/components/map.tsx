@@ -44,10 +44,9 @@ function routeResultFromSaved(saved: SavedRoute): RouteResult {
 function profileEqual(a: RoutingProfile, b: RoutingProfile): boolean {
   return (
     a.avoidTraffic === b.avoidTraffic &&
-    a.preferQuietSurfaces === b.preferQuietSurfaces &&
+    a.preferSmoothSurfaces === b.preferSmoothSurfaces &&
     a.maxGradient === b.maxGradient &&
     a.preferCycleways === b.preferCycleways &&
-    a.preferLargerRoads === b.preferLargerRoads &&
     a.allowFerries === b.allowFerries &&
     a.allowWaterCrossings === b.allowWaterCrossings &&
     a.maxTrailDifficulty === b.maxTrailDifficulty

@@ -27,10 +27,9 @@ export type RouteProfilePreset = z.infer<typeof RouteProfilePresetSchema>;
 
 export const RoutingProfileSchema = z.object({
   avoidTraffic: z.number().min(0).max(1),
-  preferQuietSurfaces: z.number().min(0).max(1),
+  preferSmoothSurfaces: z.number().min(0).max(1).default(0),
   maxGradient: z.number().min(0).max(20),
   preferCycleways: z.number().min(0).max(1).default(0),
-  preferLargerRoads: z.number().min(0).max(1).default(0),
   allowFerries: z.boolean().default(false),
   allowWaterCrossings: z.boolean().default(false),
   // 0–6 mirrors OSM mtb:scale; 6 = no cap (rule `mtb_rating > 6` never fires on real data)
@@ -38,16 +37,14 @@ export const RoutingProfileSchema = z.object({
 });
 
 export interface RoutingProfile {
-  /** 0 = ignore, 1 = strongly avoid high-traffic roads. */
+  /** 0 = ignore, 1 = strongly avoid high-traffic roads; also rewards quiet alternatives (cycleways, tracks, living streets). */
   avoidTraffic: number;
-  /** 0 = ignore, 1 = strongly prefer quiet/unpaved surfaces. */
-  preferQuietSurfaces: number;
+  /** 0 = ignore, 1 = strongly prefer paved surfaces (asphalt/concrete). */
+  preferSmoothSurfaces: number;
   /** Maximum acceptable gradient in percent (0–20). */
   maxGradient: number;
-  /** 0 = ignore; 1 = strongly prefer dedicated cycleways (`highway=cycleway`; in Part B also `bicycle=designated`). */
+  /** 0 = ignore; 1 = strongly prefer dedicated cycling infrastructure. Separate cycleways rewarded more than bike lanes on roads. */
   preferCycleways: number;
-  /** 0 = ignore, 1 = strongly prefer SECONDARY/TERTIARY roads over tracks/paths. */
-  preferLargerRoads: number;
   /** When true, ferry edges are routable. Default false. */
   allowFerries: boolean;
   /** When true, ford crossings are routable. Default false. */

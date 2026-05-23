@@ -649,39 +649,7 @@ export function RoutePanel({
         <summary className="route-panel-advanced-summary">Advanced</summary>
 
         <div className="route-panel-sliders">
-          <p className="route-panel-advanced-group-label">Surface and gradient</p>
-          <label className="route-panel-label">
-            <span>Prefer quiet surfaces</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={profile.preferQuietSurfaces}
-              disabled={deepLinkLoading}
-              onChange={(e) =>
-                onProfileChange({ ...profile, preferQuietSurfaces: Number(e.target.value) })
-              }
-              onPointerUp={onProfileCommit}
-            />
-          </label>
-          <label className="route-panel-label">
-            <span>Max gradient ({profile.maxGradient}%)</span>
-            <input
-              type="range"
-              min="0"
-              max="20"
-              step="1"
-              value={profile.maxGradient}
-              disabled={deepLinkLoading}
-              onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
-              onPointerUp={onProfileCommit}
-            />
-          </label>
-        </div>
-
-        <div className="route-panel-sliders">
-          <p className="route-panel-advanced-group-label">Roads and routes</p>
+          <p className="route-panel-advanced-group-label">Roads and traffic</p>
           <label className="route-panel-label">
             <span>Avoid traffic</span>
             <input
@@ -698,21 +666,6 @@ export function RoutePanel({
             />
           </label>
           <label className="route-panel-label">
-            <span>Prefer larger roads</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={profile.preferLargerRoads}
-              disabled={deepLinkLoading}
-              onChange={(e) =>
-                onProfileChange({ ...profile, preferLargerRoads: Number(e.target.value) })
-              }
-              onPointerUp={onProfileCommit}
-            />
-          </label>
-          <label className="route-panel-label">
             <span>Prefer cycleways</span>
             <input
               type="range"
@@ -724,6 +677,38 @@ export function RoutePanel({
               onChange={(e) =>
                 onProfileChange({ ...profile, preferCycleways: Number(e.target.value) })
               }
+              onPointerUp={onProfileCommit}
+            />
+          </label>
+        </div>
+
+        <div className="route-panel-sliders">
+          <p className="route-panel-advanced-group-label">Surface and gradient</p>
+          <label className="route-panel-label">
+            <span>Prefer smooth surfaces</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={profile.preferSmoothSurfaces}
+              disabled={deepLinkLoading}
+              onChange={(e) =>
+                onProfileChange({ ...profile, preferSmoothSurfaces: Number(e.target.value) })
+              }
+              onPointerUp={onProfileCommit}
+            />
+          </label>
+          <label className="route-panel-label">
+            <span>Max gradient ({profile.maxGradient}%)</span>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              step="1"
+              value={profile.maxGradient}
+              disabled={deepLinkLoading}
+              onChange={(e) => onProfileChange({ ...profile, maxGradient: Number(e.target.value) })}
               onPointerUp={onProfileCommit}
             />
           </label>
