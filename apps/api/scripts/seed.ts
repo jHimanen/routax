@@ -289,8 +289,7 @@ export async function seedRoutes(
     const currentHash = computeDefinitionsHash();
     if (data.definitionsHash !== currentHash) {
       throw new Error(
-        `Frozen fixture is stale (hash ${data.definitionsHash ?? "missing"} ≠ ${currentHash}).\n` +
-          "Start GraphHopper and run: pnpm tsx scripts/seed.ts --write-fixtures",
+        `Frozen fixture is stale (hash ${data.definitionsHash ?? "missing"} ≠ ${currentHash}).\nStart GraphHopper and run: pnpm tsx scripts/seed.ts --write-fixtures`,
       );
     }
     fixtureMap = new Map(data.routes.map((r) => [r.slug, r.result]));
