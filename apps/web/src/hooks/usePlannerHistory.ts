@@ -1,4 +1,4 @@
-import type { RouteProfilePreset, RoutingProfile, Waypoint } from "@routax/shared";
+import type { RoutingProfile, Waypoint } from "@routax/shared";
 import { useCallback, useRef, useState } from "react";
 
 export type PlannerMode = "point_to_point" | "round_trip";
@@ -6,7 +6,6 @@ export type DirectionBias = "any" | "north" | "east" | "south" | "west";
 
 export type PlannerSnapshot = {
   waypoints: Waypoint[];
-  preset: RouteProfilePreset;
   profile: RoutingProfile;
   plannerMode: PlannerMode;
   targetDistanceKm: number;

@@ -145,14 +145,14 @@ check "web"        GET  "/"           200
 check "api/health" GET  "/api/health" 200
 check "api/route"  POST "/api/route"  200 \
   -H "Content-Type: application/json" \
-  -d '{"waypoints":[{"lat":60.1699,"lng":25.0097},{"lat":60.1791,"lng":24.9506}],"preset":"fastest_direct"}'
+  -d '{"waypoints":[{"lat":60.1699,"lng":25.0097},{"lat":60.1791,"lng":24.9506}],"profile":{"avoidTraffic":0,"preferCycleways":0,"preferSmoothSurfaces":0,"minimiseClimbing":0,"maxGradient":20,"allowFerries":false,"allowWaterCrossings":false}}'
 
 # Elevation and surface checks on Tampere→Jyväskylä — enough relief for non-zero ascent,
 # enough route variety for ≥2 distinct surface classes
 check_elevation "tampere-jyvaskyla" \
-  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
+  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"profile":{"avoidTraffic":0,"preferCycleways":0,"preferSmoothSurfaces":0,"minimiseClimbing":0,"maxGradient":20,"allowFerries":false,"allowWaterCrossings":false}}'
 check_surfaces "tampere-jyvaskyla" \
-  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct"}'
+  '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"profile":{"avoidTraffic":0,"preferCycleways":0,"preferSmoothSurfaces":0,"minimiseClimbing":0,"maxGradient":20,"allowFerries":false,"allowWaterCrossings":false}}'
 
 # Verify all nine newly-indexed EVs are queryable directly from GraphHopper.
 # Calls GH at $GH_URL (not through the Routax API, which does not expose details=).
@@ -161,7 +161,7 @@ check_encoded_values "tampere-jyvaskyla"
 # Verify that all RoutingProfile fields are accepted by the API end-to-end.
 check "advanced-fields" POST "/api/route" 200 \
   -H "Content-Type: application/json" \
-  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"preset":"fastest_direct","advancedOverrides":{"allowFerries":true,"allowWaterCrossings":true,"preferCycleways":1,"preferSmoothSurfaces":0.8,"maxTrailDifficulty":6}}'
+  -d '{"waypoints":[{"lat":61.498,"lng":23.760},{"lat":62.243,"lng":25.747}],"profile":{"avoidTraffic":0.5,"preferCycleways":0.6,"preferSmoothSurfaces":0.8,"minimiseClimbing":0,"maxGradient":15,"allowFerries":true,"allowWaterCrossings":true}}'
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

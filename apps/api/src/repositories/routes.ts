@@ -2,7 +2,6 @@ import type {
   CreateRouteRequest,
   CueEntry,
   PlanningMetadata,
-  RouteProfilePreset,
   SavedRoute,
   UpdateRouteRequest,
   Waypoint,
@@ -23,7 +22,7 @@ interface RouteRow {
   id: string;
   user_id: string;
   name: string;
-  preset: RouteProfilePreset;
+  preset: string | null;
   geometry_json: string;
   profile: unknown;
   distance_m: number;
@@ -67,7 +66,7 @@ function toSavedRoute(row: RouteRow): SavedRoute {
     id: row.id,
     userId: row.user_id,
     name: row.name,
-    preset: row.preset,
+    preset: row.preset ?? undefined,
     geometry: JSON.parse(row.geometry_json) as SavedRoute["geometry"],
     profile: row.profile as SavedRoute["profile"],
     distance: row.distance_m,
@@ -119,7 +118,7 @@ export class RouteRepository {
       [
         userId,
         payload.name,
-        payload.preset,
+        payload.preset ?? null,
         JSON.stringify(payload.geometry),
         JSON.stringify(payload.profile),
         payload.distance,
