@@ -2,7 +2,7 @@ COMPOSE_FILE := infra/docker/docker-compose.local.yml
 COMPOSE_ENV_FILE := .env.local
 INFRA_SERVICES := postgres minio mailhog
 
-.PHONY: up up-build down logs reset dev osm-reimport download-osm smoke-test smoke test test-integration
+.PHONY: up up-build rebuild down logs reset dev osm-reimport download-osm smoke-test smoke test test-integration
 
 up:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up -d
@@ -11,6 +11,12 @@ up-build:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) build --pull --no-cache \
 	  --build-arg SENTRY_RELEASE=$(shell git rev-parse --short HEAD)
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up -d --renew-anon-volumes
+
+# Rebuild a single service and restart it without touching other containers.
+# Usage: make rebuild SVC=api   (or web, graphhopper, etc.)
+rebuild:
+	@test -n "$(SVC)" || (echo "Usage: make rebuild SVC=<service>" && exit 1)
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d $(SVC)
 
 down:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) down
