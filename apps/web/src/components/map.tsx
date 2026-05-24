@@ -808,8 +808,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       if (initialRouteId && !deepLinkResolved) return;
 
-      // Round-trip mode: any click places or replaces the single start point — no menu
-      if (plannerMode === "round_trip") {
+      // Round-trip mode: place/replace start only when no route exists yet.
+      // Once a route is generated (waypoints.length >= 2), fall through to the shared menu logic.
+      if (plannerMode === "round_trip" && waypoints.length < 2) {
         const newWps: Waypoint[] = [{ id: makeWaypointId(), position: lngLat, role: "start" }];
         setWaypoints(newWps);
         historyPush(buildSnapshot({ waypoints: newWps }));
@@ -1084,13 +1085,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   }, [doUndo, doRedo]);
 
   const cursorMode =
-    repositionTarget !== null
-      ? "crosshair"
-      : plannerMode === "round_trip"
-        ? "crosshair"
-        : waypoints.length < 2
-          ? "crosshair"
-          : "grab";
+    repositionTarget !== null || waypoints.length < 2 ? "crosshair" : "grab";
 
   const [isMac, setIsMac] = useState(false);
   useEffect(() => {
