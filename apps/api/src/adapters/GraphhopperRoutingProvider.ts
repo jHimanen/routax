@@ -9,6 +9,14 @@ import type {
   Waypoint,
 } from "@routax/shared";
 
+export class RoundTripUnbuildableError extends Error {
+  readonly statusCode = 422;
+  constructor(message: string) {
+    super(message);
+    this.name = "RoundTripUnbuildableError";
+  }
+}
+
 interface GhInstruction {
   distance: number;
   sign: number;
