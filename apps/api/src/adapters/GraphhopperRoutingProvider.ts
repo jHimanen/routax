@@ -8,6 +8,7 @@ import type {
   SurfaceClass,
   Waypoint,
 } from "@routax/shared";
+import { anchorJitter, bearingToLatLng, generateAnchorBearings } from "../lib/geo.js";
 
 export class RoundTripUnbuildableError extends Error {
   readonly statusCode = 422;
@@ -240,40 +241,30 @@ export function buildCustomModel(profile: RoutingProfile): unknown {
   };
 }
 
-const DIRECTION_HEADINGS: Record<string, number | undefined> = {
-  any: undefined,
-  north: 0,
-  east: 90,
-  south: 180,
-  west: 270,
-};
+const ROUND_TRIP_ANCHORS = 3; // triangle-ish loop
+const ROUND_TRIP_TOLERANCE = 0.25; // ±25% distance band
+const MAX_RADIUS_ATTEMPTS = 3;
+const MAX_PROBE_ATTEMPTS = 15; // per anchor
 
-function sampleWaypointsFromGeometry(coords: [number, number][], viaCount: number): Waypoint[] {
-  const origin = coords[0];
-  if (!origin) throw new Error("Cannot sample waypoints from empty coordinate array");
+function buildLoopWaypoints(
+  start: { lat: number; lng: number },
+  anchors: Array<{ lat: number; lng: number }>,
+): Waypoint[] {
   const startWp: Waypoint = {
     id: crypto.randomUUID(),
-    position: { lng: origin[0], lat: origin[1] },
+    position: { lng: start.lng, lat: start.lat },
     role: "start",
   };
   const finishWp: Waypoint = {
     id: crypto.randomUUID(),
-    position: { lng: origin[0], lat: origin[1] },
+    position: { lng: start.lng, lat: start.lat },
     role: "finish",
   };
-
-  const viaWaypoints: Waypoint[] = [];
-  for (let i = 1; i <= viaCount; i++) {
-    const idx = Math.floor((coords.length * i) / (viaCount + 1));
-    const coord = coords[idx];
-    if (!coord) continue;
-    viaWaypoints.push({
-      id: crypto.randomUUID(),
-      position: { lng: coord[0], lat: coord[1] },
-      role: "via",
-    });
-  }
-
+  const viaWaypoints: Waypoint[] = anchors.map((a) => ({
+    id: crypto.randomUUID(),
+    position: { lng: a.lng, lat: a.lat },
+    role: "via" as const,
+  }));
   return [startWp, ...viaWaypoints, finishWp];
 }
 
@@ -422,72 +413,74 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
   }
 
   async planRoundTrip(request: RoundTripRequest): Promise<RouteResult> {
-    const profile = request.profile;
-    const heading = DIRECTION_HEADINGS[request.directionBias ?? "any"];
+    const { start, targetDistanceKm, directionBias = "any", seed = 0, profile } = request;
+    const targetMeters = targetDistanceKm * 1000;
 
-    const body: Record<string, unknown> = {
-      points: [[request.start.lng, request.start.lat]],
-      profile: "bike",
-      elevation: true,
-      points_encoded: false,
-      "ch.disable": true,
-      instructions: true,
-      algorithm: "round_trip",
-      "round_trip.distance": request.targetDistanceKm * 1000,
-      "round_trip.seed": request.seed ?? 0,
-      custom_model: buildCustomModel(profile),
-      details: ["surface"],
-    };
+    // "reachable from start ⇒ on the mainland" — this invariant holds only while
+    // allowFerries is false (the default). A future "allow ferries" mode must re-evaluate
+    // this assumption before relying on the same connectivity check.
+    let radius = targetMeters / (2 * Math.PI);
 
-    if (heading !== undefined) {
-      body.heading = [heading];
-      body.heading_penalty = 100;
+    let lastResult: RouteResult | undefined;
+    let lastAnchors: Array<{ lat: number; lng: number }> | undefined;
+
+    for (let radiusAttempt = 0; radiusAttempt < MAX_RADIUS_ATTEMPTS; radiusAttempt++) {
+      const baseBearings = generateAnchorBearings(ROUND_TRIP_ANCHORS, directionBias, seed);
+      const anchors: Array<{ lat: number; lng: number }> = [];
+
+      for (let i = 0; i < ROUND_TRIP_ANCHORS; i++) {
+        const baseBearing = baseBearings[i] ?? 0;
+        let found = false;
+
+        for (let attempt = 0; attempt < MAX_PROBE_ATTEMPTS; attempt++) {
+          const { bearingDelta, radiusFactor } = anchorJitter(seed, i, attempt);
+          const bearing = ((baseBearing + bearingDelta) % 360 + 360) % 360;
+          const candidate = bearingToLatLng(start, bearing, radius * radiusFactor);
+
+          try {
+            await this.planLeg(start, candidate, profile);
+            anchors.push(candidate);
+            found = true;
+            break;
+          } catch {
+            // candidate not reachable from start; try next jitter
+          }
+        }
+
+        if (!found) {
+          throw new RoundTripUnbuildableError(
+            `Couldn't build a loop of ~${targetDistanceKm} km from here — try a different start or a longer distance.`,
+          );
+        }
+      }
+
+      // Route the full loop: start → a0 → a1 → a2 → start
+      const legPoints = [start, ...anchors, start];
+      const legs: RouteResult[] = [];
+      for (let i = 0; i < legPoints.length - 1; i++) {
+        const from = legPoints[i];
+        const to = legPoints[i + 1];
+        if (!from || !to) continue;
+        legs.push(await this.planLeg(from, to, profile));
+      }
+
+      const result = stitchRouteLegs(legs);
+      lastResult = result;
+      lastAnchors = anchors;
+
+      const ratio = result.distance / targetMeters;
+      if (Math.abs(ratio - 1) <= ROUND_TRIP_TOLERANCE || radiusAttempt === MAX_RADIUS_ATTEMPTS - 1) {
+        return { ...result, generatedWaypoints: buildLoopWaypoints(start, anchors) };
+      }
+
+      // Adjust radius: shrink if loop overshot, expand if undershot.
+      radius = radius / ratio;
     }
 
-    const response = await fetch(`${this.baseUrl}/route`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`GraphHopper returned ${response.status}: ${text}`);
-    }
-
-    const data = (await response.json()) as GhResponse;
-    const path = data.paths[0];
-
-    if (!path) {
-      throw new Error("GraphHopper returned no paths");
-    }
-
-    const coords3d = path.points.coordinates;
-    const coordinates: [number, number][] = coords3d.map(([lng, lat]) => [lng, lat]);
-    const elevationProfile: number[] = coords3d.map(([, , ele]) => ele);
-
-    if (elevationProfile.length !== coordinates.length) {
-      throw new Error(
-        `GH elevation/coordinate length mismatch: ${elevationProfile.length} vs ${coordinates.length}`,
-      );
-    }
-
-    const surfaceRanges = path.details?.surface ?? [];
-    const surfaces = parseSurfaceDetails(surfaceRanges, coordinates.length - 1);
-    const cueSheet = parseInstructions(path.instructions ?? [], coordinates);
-
-    const generatedWaypoints = sampleWaypointsFromGeometry(coordinates, 4);
-
+    // Unreachable — the loop above always returns or throws.
     return {
-      distance: path.distance,
-      duration: Math.round(path.time / 1000),
-      geometry: { type: "LineString", coordinates },
-      elevationProfile,
-      ascent: path.ascend,
-      descent: path.descend,
-      surfaces,
-      cueSheet,
-      generatedWaypoints,
+      ...(lastResult as RouteResult),
+      generatedWaypoints: buildLoopWaypoints(start, lastAnchors ?? []),
     };
   }
 }
