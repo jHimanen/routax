@@ -34,7 +34,8 @@ export function bearingToLatLng(
 
   const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
   const λ2 =
-    λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+    λ1 +
+    Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
 
   return {
     lat: (φ2 * 180) / Math.PI,
@@ -67,7 +68,7 @@ export function generateAnchorBearings(k: number, directionBias: string, seed: n
   const seedOffset = (seededRandom(seed) - 0.5) * 30; // ±15°
   const arcStart = biasHeading - 90 + seedOffset;
   const step = 180 / (k + 1);
-  return Array.from({ length: k }, (_, i) => ((arcStart + step * (i + 1)) % 360 + 360) % 360);
+  return Array.from({ length: k }, (_, i) => (((arcStart + step * (i + 1)) % 360) + 360) % 360);
 }
 
 /**

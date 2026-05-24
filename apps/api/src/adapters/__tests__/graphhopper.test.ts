@@ -891,7 +891,10 @@ function mockFetchOkTimes(n: number) {
 }
 
 function extractDestPoint(call: unknown): number[] {
-  const body = JSON.parse(((call as [string, RequestInit])[1].body) as string) as Record<string, unknown>;
+  const body = JSON.parse((call as [string, RequestInit])[1].body as string) as Record<
+    string,
+    unknown
+  >;
   return (body.points as number[][])[1] as number[];
 }
 
@@ -983,7 +986,9 @@ describe("GraphhopperRoutingProvider — planRoundTrip", () => {
     const spy = vi.spyOn(global, "fetch");
     // First probe attempt for anchor 0 fails; all 8 subsequent calls succeed (3 more probes + 4 legs)
     spy.mockResolvedValueOnce({
-      ok: false, status: 400, text: async () => "bad",
+      ok: false,
+      status: 400,
+      text: async () => "bad",
       // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any);
     for (let i = 0; i < 7; i++) {
@@ -1001,17 +1006,23 @@ describe("GraphhopperRoutingProvider — planRoundTrip", () => {
 
   it("throws RoundTripUnbuildableError when all probes for an anchor fail", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: false, status: 400, text: async () => "unreachable",
+      ok: false,
+      status: 400,
+      text: async () => "unreachable",
       // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any);
 
     const provider = new GraphhopperRoutingProvider();
-    await expect(provider.planRoundTrip(ROUND_TRIP_REQUEST)).rejects.toThrow(RoundTripUnbuildableError);
+    await expect(provider.planRoundTrip(ROUND_TRIP_REQUEST)).rejects.toThrow(
+      RoundTripUnbuildableError,
+    );
   });
 
   it("RoundTripUnbuildableError carries statusCode 422", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
-      ok: false, status: 400, text: async () => "unreachable",
+      ok: false,
+      status: 400,
+      text: async () => "unreachable",
       // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any);
 
@@ -1033,7 +1044,7 @@ describe("GraphhopperRoutingProvider — planRoundTrip", () => {
         const result = await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, seed });
 
         expect(result.distance).toBeGreaterThan(22_500); // ≥ 75% of 30 km
-        expect(result.distance).toBeLessThan(37_500);    // ≤ 125% of 30 km
+        expect(result.distance).toBeLessThan(37_500); // ≤ 125% of 30 km
         expect(result.generatedWaypoints).toHaveLength(5);
 
         // Loop closure: last coord within ~500 m of start
@@ -1071,7 +1082,9 @@ describe("GraphhopperRoutingProvider — planRoundTrip", () => {
         (Math.max(...coords.map(([, lat]) => lat)) + Math.min(...coords.map(([, lat]) => lat))) / 2;
 
       // Northern loop's bounding-box midpoint should be ≥ 0.05° further north
-      expect(midLat(north.geometry.coordinates) - midLat(south.geometry.coordinates)).toBeGreaterThan(0.05);
+      expect(
+        midLat(north.geometry.coordinates) - midLat(south.geometry.coordinates),
+      ).toBeGreaterThan(0.05);
     },
   );
 });

@@ -60,8 +60,8 @@ describe("generateAnchorBearings", () => {
   it("any: k=3 bearings are approximately 120° apart", () => {
     const bearings = generateAnchorBearings(3, "any", 0);
     const [a, b, c] = bearings as [number, number, number];
-    const diff1 = ((b - a + 360) % 360);
-    const diff2 = ((c - b + 360) % 360);
+    const diff1 = (b - a + 360) % 360;
+    const diff2 = (c - b + 360) % 360;
     expect(diff1).toBeCloseTo(120, 0);
     expect(diff2).toBeCloseTo(120, 0);
   });

@@ -434,7 +434,7 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
 
         for (let attempt = 0; attempt < MAX_PROBE_ATTEMPTS; attempt++) {
           const { bearingDelta, radiusFactor } = anchorJitter(seed, i, attempt);
-          const bearing = ((baseBearing + bearingDelta) % 360 + 360) % 360;
+          const bearing = (((baseBearing + bearingDelta) % 360) + 360) % 360;
           const candidate = bearingToLatLng(start, bearing, radius * radiusFactor);
 
           try {
@@ -469,7 +469,10 @@ export class GraphhopperRoutingProvider implements RoutingProvider {
       lastAnchors = anchors;
 
       const ratio = result.distance / targetMeters;
-      if (Math.abs(ratio - 1) <= ROUND_TRIP_TOLERANCE || radiusAttempt === MAX_RADIUS_ATTEMPTS - 1) {
+      if (
+        Math.abs(ratio - 1) <= ROUND_TRIP_TOLERANCE ||
+        radiusAttempt === MAX_RADIUS_ATTEMPTS - 1
+      ) {
         return { ...result, generatedWaypoints: buildLoopWaypoints(start, anchors) };
       }
 
