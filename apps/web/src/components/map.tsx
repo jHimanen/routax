@@ -1084,8 +1084,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     return () => window.removeEventListener("keydown", onKey);
   }, [doUndo, doRedo]);
 
-  const cursorMode =
-    repositionTarget !== null || waypoints.length < 2 ? "crosshair" : "grab";
+  const cursorMode = repositionTarget !== null || waypoints.length < 2 ? "crosshair" : "grab";
 
   const [isMac, setIsMac] = useState(false);
   useEffect(() => {
