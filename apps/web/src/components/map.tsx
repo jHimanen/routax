@@ -487,6 +487,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const [directionBias, setDirectionBias] = useState<DirectionBias>("any");
   const [roundTripSeed, setRoundTripSeed] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [planningMetadata, setPlanningMetadata] = useState<PlanningMetadata | null>(null);
 
   const { isReady, flags } = useFeatureFlags();
@@ -926,6 +927,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       if (regenerate) setRoundTripSeed(nextSeed);
 
       setIsGenerating(true);
+      setGenerateError(null);
       try {
         const res = await postRoute({
           mode: "round_trip",
@@ -957,6 +959,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           directionBias,
           roundTripSeed: nextSeed,
         });
+      } catch (err) {
+        if (err instanceof Error) {
+          setGenerateError(err.message);
+        }
       } finally {
         setIsGenerating(false);
       }
@@ -1223,6 +1229,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onGenerate={() => void handleGenerateRoundTrip(false)}
         onRegenerate={() => void handleGenerateRoundTrip(true)}
         isGenerating={isGenerating}
+        generateError={generateError}
         hasRoundTripStart={
           plannerMode === "round_trip" && waypoints.some((w) => w.role === "start")
         }

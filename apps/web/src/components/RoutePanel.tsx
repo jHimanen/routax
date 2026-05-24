@@ -65,6 +65,7 @@ interface RoutePanelProps {
   onGenerate: () => void;
   onRegenerate: () => void;
   isGenerating: boolean;
+  generateError: string | null;
   hasRoundTripStart: boolean;
   planningMetadata: PlanningMetadata | null;
   panelOpen: boolean;
@@ -134,6 +135,7 @@ export function RoutePanel({
   onGenerate,
   onRegenerate,
   isGenerating,
+  generateError,
   hasRoundTripStart,
   planningMetadata,
   cueSheets,
@@ -423,6 +425,15 @@ export function RoutePanel({
               </button>
             )}
           </div>
+          {generateError && (
+            <div className="route-panel-error route-panel-rt-error" role="alert">
+              <p className="route-panel-rt-error-main">{generateError}</p>
+              <p className="route-panel-rt-error-hint">
+                Near the coast? Anchor points may be landing in water — try a different direction
+                bias or move the start point inland.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
