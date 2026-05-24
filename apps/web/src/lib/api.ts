@@ -34,7 +34,11 @@ export async function postRoute(request: RouteRequest, signal?: AbortSignal): Pr
   });
 
   if (!response.ok) {
-    throw new Error(`Route request failed with status ${response.status}`);
+    const json = await response.json().catch(() => null);
+    const message =
+      (json as { error?: { message?: string } } | null)?.error?.message ??
+      `Route request failed with status ${response.status}`;
+    throw new Error(message);
   }
 
   const json = await response.json();

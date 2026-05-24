@@ -2,6 +2,7 @@ import { RouteRequestSchema, type RouteResult } from "@routax/shared";
 import * as Sentry from "@sentry/node";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { RoundTripUnbuildableError } from "../adapters/GraphhopperRoutingProvider.js";
 import type { Container } from "../container.js";
 
 export function registerRouteEndpoint(app: FastifyInstance, container: Container): void {
@@ -36,6 +37,14 @@ export function registerRouteEndpoint(app: FastifyInstance, container: Container
           result = await container.routing.planRoute(body);
         }
       } catch (err) {
+        if (err instanceof RoundTripUnbuildableError) {
+          await container.analytics.track({
+            name: "round_trip_unbuildable",
+            userId: user.id,
+            properties: { targetDistanceKm: isRoundTrip ? body.targetDistanceKm : 0 },
+          });
+          throw err; // statusCode=422; caught by global error handler
+        }
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("unroutable")) {
           const clientErr = new Error(msg) as Error & { statusCode: number };

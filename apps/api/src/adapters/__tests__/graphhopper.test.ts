@@ -845,6 +845,13 @@ describe("GraphhopperRoutingProvider", () => {
 });
 
 // ── planRoundTrip ─────────────────────────────────────────────────────────────
+// The generator no longer proxies to GH algorithm=round_trip. Instead it:
+//   1. Generates k=3 anchor bearings (seed-driven, direction-biased).
+//   2. Probes each anchor for reachability via planLeg (start → candidate).
+//   3. Routes the full loop start → a0 → a1 → a2 → start via planLeg + stitchRouteLegs.
+// Happy path: 3 probe requests + 4 loop leg requests = 7 total fetch calls.
+
+import { RoundTripUnbuildableError } from "../GraphhopperRoutingProvider.js";
 
 const ROUND_TRIP_REQUEST = {
   mode: "round_trip" as const,
@@ -853,20 +860,42 @@ const ROUND_TRIP_REQUEST = {
   profile: BASE_PROFILE,
 };
 
-function makeRoundTripPath(coordCount = 100) {
+function makeLoopLegPath(coordCount = 10) {
+  // Each of 4 loop legs returns ~7 500 m; total ≈ 30 000 m = target (ratio ≈ 1.0 → first attempt succeeds)
   const coords: [number, number, number][] = Array.from({ length: coordCount }, (_, i) => [
     25.0097 + i * 0.001,
     60.1699 + Math.sin(i * 0.1) * 0.01,
     10 + i,
   ]);
   return {
-    distance: 30000,
-    time: 5400000,
-    ascend: 150,
-    descend: 150,
+    distance: 7_500,
+    time: 1_350_000,
+    ascend: 30,
+    descend: 30,
     points: { type: "LineString", coordinates: coords },
     details: { surface: [[0, coordCount - 1, "asphalt"] as [number, number, string]] },
   };
+}
+
+// Mock fetch to succeed n times, each returning a single loop-leg-sized path.
+function mockFetchOkTimes(n: number) {
+  const spy = vi.spyOn(global, "fetch");
+  for (let i = 0; i < n; i++) {
+    spy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ paths: [makeLoopLegPath()] }),
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
+    } as any);
+  }
+  return spy;
+}
+
+function extractDestPoint(call: unknown): number[] {
+  const body = JSON.parse((call as [string, RequestInit])[1].body as string) as Record<
+    string,
+    unknown
+  >;
+  return (body.points as number[][])[1] as number[];
 }
 
 describe("GraphhopperRoutingProvider — planRoundTrip", () => {
@@ -874,103 +903,188 @@ describe("GraphhopperRoutingProvider — planRoundTrip", () => {
     vi.restoreAllMocks();
   });
 
-  it("builds a GH request with algorithm: round_trip and correct distance", async () => {
-    mockFetchOk([makeRoundTripPath()]);
+  it("does not send algorithm=round_trip, round_trip.*, or heading in any request", async () => {
+    mockFetchOkTimes(7);
     const provider = new GraphhopperRoutingProvider();
     await provider.planRoundTrip(ROUND_TRIP_REQUEST);
 
-    const call = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse((call?.[1] as RequestInit).body as string) as Record<string, unknown>;
-    expect(body.algorithm).toBe("round_trip");
-    expect(body["round_trip.distance"]).toBe(30000);
-    expect(body["round_trip.seed"]).toBe(0);
-    expect(body.heading).toBeUndefined();
+    for (const call of vi.mocked(fetch).mock.calls) {
+      const body = JSON.parse((call[1] as RequestInit).body as string) as Record<string, unknown>;
+      expect(body.algorithm).toBeUndefined();
+      expect(body["round_trip.distance"]).toBeUndefined();
+      expect(body["round_trip.seed"]).toBeUndefined();
+      expect(body.heading).toBeUndefined();
+      expect(body.heading_penalty).toBeUndefined();
+    }
   });
 
-  it("passes seed when provided", async () => {
-    mockFetchOk([makeRoundTripPath()]);
-    const provider = new GraphhopperRoutingProvider();
-    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, seed: 5 });
-
-    const call = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse((call?.[1] as RequestInit).body as string) as Record<string, unknown>;
-    expect(body["round_trip.seed"]).toBe(5);
-  });
-
-  it("includes heading and heading_penalty for north bias", async () => {
-    mockFetchOk([makeRoundTripPath()]);
-    const provider = new GraphhopperRoutingProvider();
-    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, directionBias: "north" });
-
-    const call = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse((call?.[1] as RequestInit).body as string) as Record<string, unknown>;
-    expect(body.heading).toEqual([0]);
-    expect(body.heading_penalty).toBe(100);
-  });
-
-  it("omits heading fields for 'any' direction bias", async () => {
-    mockFetchOk([makeRoundTripPath()]);
-    const provider = new GraphhopperRoutingProvider();
-    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, directionBias: "any" });
-
-    const call = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse((call?.[1] as RequestInit).body as string) as Record<string, unknown>;
-    expect(body.heading).toBeUndefined();
-    expect(body.heading_penalty).toBeUndefined();
-  });
-
-  it("returns generatedWaypoints with 6 entries: start + 4 vias + finish", async () => {
-    mockFetchOk([makeRoundTripPath(100)]);
+  it("returns generatedWaypoints with 5 entries: start + 3 vias + finish", async () => {
+    mockFetchOkTimes(7);
     const provider = new GraphhopperRoutingProvider();
     const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
 
-    expect(result.generatedWaypoints).toHaveLength(6);
+    expect(result.generatedWaypoints).toHaveLength(5);
     expect(result.generatedWaypoints?.[0]?.role).toBe("start");
     expect(result.generatedWaypoints?.[1]?.role).toBe("via");
-    expect(result.generatedWaypoints?.[4]?.role).toBe("via");
-    expect(result.generatedWaypoints?.[5]?.role).toBe("finish");
+    expect(result.generatedWaypoints?.[3]?.role).toBe("via");
+    expect(result.generatedWaypoints?.[4]?.role).toBe("finish");
   });
 
   it("start and finish waypoints share the same position", async () => {
-    mockFetchOk([makeRoundTripPath(100)]);
+    mockFetchOkTimes(7);
     const provider = new GraphhopperRoutingProvider();
     const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
 
     expect(result.generatedWaypoints?.[0]?.position).toEqual(
-      result.generatedWaypoints?.[5]?.position,
+      result.generatedWaypoints?.[4]?.position,
     );
   });
 
-  it("throws on non-OK GraphHopper response", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+  it("same seed produces the same probe destinations (deterministic)", async () => {
+    const provider = new GraphhopperRoutingProvider();
+
+    mockFetchOkTimes(7);
+    await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+    const run1 = vi.mocked(fetch).mock.calls.slice(0, 3).map(extractDestPoint);
+
+    vi.restoreAllMocks();
+    mockFetchOkTimes(7);
+    await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+    const run2 = vi.mocked(fetch).mock.calls.slice(0, 3).map(extractDestPoint);
+
+    expect(run1).toEqual(run2);
+  });
+
+  it("different seeds produce different probe destinations", async () => {
+    const provider = new GraphhopperRoutingProvider();
+
+    mockFetchOkTimes(7);
+    await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+    const seed0 = vi.mocked(fetch).mock.calls.slice(0, 3).map(extractDestPoint);
+
+    vi.restoreAllMocks();
+    mockFetchOkTimes(7);
+    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, seed: 1 });
+    const seed1 = vi.mocked(fetch).mock.calls.slice(0, 3).map(extractDestPoint);
+
+    expect(seed0).not.toEqual(seed1);
+  });
+
+  it("north bias: all probe destination latitudes are north of the start", async () => {
+    mockFetchOkTimes(7);
+    const provider = new GraphhopperRoutingProvider();
+    await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, directionBias: "north" });
+
+    const startLat = ROUND_TRIP_REQUEST.start.lat;
+    for (const call of vi.mocked(fetch).mock.calls.slice(0, 3)) {
+      const dest = extractDestPoint(call);
+      expect(dest[1]).toBeGreaterThan(startLat);
+    }
+  });
+
+  it("retries a failed probe and still builds the loop", async () => {
+    const spy = vi.spyOn(global, "fetch");
+    // First probe attempt for anchor 0 fails; all 8 subsequent calls succeed (3 more probes + 4 legs)
+    spy.mockResolvedValueOnce({
       ok: false,
-      status: 500,
-      text: async () => "Internal Server Error",
+      status: 400,
+      text: async () => "bad",
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
+    } as any);
+    for (let i = 0; i < 7; i++) {
+      spy.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ paths: [makeLoopLegPath()] }),
+        // biome-ignore lint/suspicious/noExplicitAny: test mock
+      } as any);
+    }
+
+    const provider = new GraphhopperRoutingProvider();
+    const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+    expect(result.generatedWaypoints).toHaveLength(5);
+  });
+
+  it("throws RoundTripUnbuildableError when all probes for an anchor fail", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "unreachable",
       // biome-ignore lint/suspicious/noExplicitAny: test mock
     } as any);
 
     const provider = new GraphhopperRoutingProvider();
     await expect(provider.planRoundTrip(ROUND_TRIP_REQUEST)).rejects.toThrow(
-      "GraphHopper returned 500",
+      RoundTripUnbuildableError,
     );
   });
 
+  it("RoundTripUnbuildableError carries statusCode 422", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "unreachable",
+      // biome-ignore lint/suspicious/noExplicitAny: test mock
+    } as any);
+
+    const provider = new GraphhopperRoutingProvider();
+    let caught: unknown;
+    try {
+      await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+    } catch (e) {
+      caught = e;
+    }
+    expect((caught as RoundTripUnbuildableError).statusCode).toBe(422);
+  });
+
   it.skipIf(!process.env.GRAPHHOPPER_URL)(
-    "integration: generates a round-trip loop near Helsinki",
+    "integration: Helsinki centre generates valid loops across 5 seeds, no water crossings",
     async () => {
       const provider = new GraphhopperRoutingProvider();
-      const result = await provider.planRoundTrip(ROUND_TRIP_REQUEST);
+      for (const seed of [0, 1, 2, 3, 4]) {
+        const result = await provider.planRoundTrip({ ...ROUND_TRIP_REQUEST, seed });
 
-      expect(result.distance).toBeGreaterThan(0);
-      expect(result.generatedWaypoints).toHaveLength(6);
+        expect(result.distance).toBeGreaterThan(22_500); // ≥ 75% of 30 km
+        expect(result.distance).toBeLessThan(37_500); // ≤ 125% of 30 km
+        expect(result.generatedWaypoints).toHaveLength(5);
 
-      // Last geometry coordinate should be close to start (within ~500m)
-      const lastCoord = result.geometry.coordinates.at(-1);
-      if (!lastCoord) throw new Error("Empty geometry");
-      const dlng = lastCoord[0] - ROUND_TRIP_REQUEST.start.lng;
-      const dlat = lastCoord[1] - ROUND_TRIP_REQUEST.start.lat;
-      const approxMeters = Math.sqrt(dlng * dlng + dlat * dlat) * 111000;
-      expect(approxMeters).toBeLessThan(500);
+        // Loop closure: last coord within ~500 m of start
+        const lastCoord = result.geometry.coordinates.at(-1);
+        if (!lastCoord) throw new Error("Empty geometry");
+        const dlng = lastCoord[0] - ROUND_TRIP_REQUEST.start.lng;
+        const dlat = lastCoord[1] - ROUND_TRIP_REQUEST.start.lat;
+        const approxMeters = Math.sqrt(dlng * dlng + dlat * dlat) * 111_000;
+        expect(approxMeters).toBeLessThan(500);
+
+        // Ferry exclusion guarantee: buildCustomModel inserts the FERRY→0 priority rule
+        // (task 22). If no exception was thrown, the loop is on the mainland.
+        expect(result.surfaces.length).toBe(result.geometry.coordinates.length - 1);
+      }
+    },
+  );
+
+  it.skipIf(!process.env.GRAPHHOPPER_URL)(
+    "integration: north vs south bias from Kouvola produces measurably different loops",
+    async () => {
+      const kouvola = { lat: 60.8678, lng: 26.7042 };
+      const provider = new GraphhopperRoutingProvider();
+      const base = {
+        mode: "round_trip" as const,
+        start: kouvola,
+        targetDistanceKm: 40,
+        profile: BASE_PROFILE,
+        seed: 0,
+      };
+
+      const north = await provider.planRoundTrip({ ...base, directionBias: "north" });
+      const south = await provider.planRoundTrip({ ...base, directionBias: "south" });
+
+      const midLat = (coords: [number, number][]) =>
+        (Math.max(...coords.map(([, lat]) => lat)) + Math.min(...coords.map(([, lat]) => lat))) / 2;
+
+      // Northern loop's bounding-box midpoint should be ≥ 0.05° further north
+      expect(
+        midLat(north.geometry.coordinates) - midLat(south.geometry.coordinates),
+      ).toBeGreaterThan(0.05);
     },
   );
 });

@@ -728,6 +728,16 @@ body {
   color: var(--color-error);
 }
 
+.route-panel-rt-error-main,
+.route-panel-rt-error-hint {
+  margin: 0;
+}
+
+.route-panel-rt-error-hint {
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
 .route-panel-reset {
   align-self: flex-start;
   padding: 4px 12px;

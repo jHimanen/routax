@@ -487,6 +487,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
   const [directionBias, setDirectionBias] = useState<DirectionBias>("any");
   const [roundTripSeed, setRoundTripSeed] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [planningMetadata, setPlanningMetadata] = useState<PlanningMetadata | null>(null);
 
   const { isReady, flags } = useFeatureFlags();
@@ -807,8 +808,9 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
 
       if (initialRouteId && !deepLinkResolved) return;
 
-      // Round-trip mode: any click places or replaces the single start point — no menu
-      if (plannerMode === "round_trip") {
+      // Round-trip mode: place/replace start only when no route exists yet.
+      // Once a route is generated (waypoints.length >= 2), fall through to the shared menu logic.
+      if (plannerMode === "round_trip" && waypoints.length < 2) {
         const newWps: Waypoint[] = [{ id: makeWaypointId(), position: lngLat, role: "start" }];
         setWaypoints(newWps);
         historyPush(buildSnapshot({ waypoints: newWps }));
@@ -926,6 +928,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
       if (regenerate) setRoundTripSeed(nextSeed);
 
       setIsGenerating(true);
+      setGenerateError(null);
       try {
         const res = await postRoute({
           mode: "round_trip",
@@ -957,6 +960,10 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
           directionBias,
           roundTripSeed: nextSeed,
         });
+      } catch (err) {
+        if (err instanceof Error) {
+          setGenerateError(err.message);
+        }
       } finally {
         setIsGenerating(false);
       }
@@ -1077,14 +1084,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
     return () => window.removeEventListener("keydown", onKey);
   }, [doUndo, doRedo]);
 
-  const cursorMode =
-    repositionTarget !== null
-      ? "crosshair"
-      : plannerMode === "round_trip"
-        ? "crosshair"
-        : waypoints.length < 2
-          ? "crosshair"
-          : "grab";
+  const cursorMode = repositionTarget !== null || waypoints.length < 2 ? "crosshair" : "grab";
 
   const [isMac, setIsMac] = useState(false);
   useEffect(() => {
@@ -1223,6 +1223,7 @@ export function RouteMap({ initialRouteId }: { initialRouteId?: string } = {}): 
         onGenerate={() => void handleGenerateRoundTrip(false)}
         onRegenerate={() => void handleGenerateRoundTrip(true)}
         isGenerating={isGenerating}
+        generateError={generateError}
         hasRoundTripStart={
           plannerMode === "round_trip" && waypoints.some((w) => w.role === "start")
         }
